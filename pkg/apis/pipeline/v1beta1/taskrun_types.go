@@ -522,36 +522,13 @@ func (tr *TaskRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
 // GetTimeout returns the execution timeout for the TaskRun, or the default if not specified
 func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
-	if tr.Spec.Timeout == nil {
+	if tr.Spec.Timeouts.Execution == nil {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 		return defaultTimeout * time.Minute
 	}
 	return tr.Spec.Timeouts.Execution.Duration
 }
 
-// GetScheduledTimeOutreturns the scheduled timeout for the TaskRun, or the default if not specified 0
-// func (tr *TaskRun) GetSchedulingTimeout(ctx context.Context) time.Duration {
-// 	// Use the platform default is no timeout is set
-// 	if tr.Spec.Timeout == nil {
-// 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
-// 		return defaultTimeout * time.Minute
-// 	}
-// 	return tr.Spec.Timeouts.Scheduling.Duration
-// }
-
-// HasTimedOut returns true if the TaskRun runtime is beyond the allowed scheduling timeout
-// func (tr *TaskRun) HasSchedulingTimedOut(ctx context.Context, c clock.PassiveClock) bool {
-// 	if tr.Status.StartTime.IsZero() {
-// 		return false
-// 	}
-// 	timeout := tr.GetSchedulingTimeout(ctx)
-// 	// If timeout is set to 0 or defaulted to 0, there is no timeout.
-// 	if timeout == apisconfig.NoTimeoutDuration {
-// 		return false
-// 	}
-// 	runtime := c.Since(tr.CreationTimestamp.Time)
-// 	return runtime > timeout
-// }
 // GetNamespacedName returns a k8s namespaced name that identifies this TaskRun
 func (tr *TaskRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: tr.Namespace, Name: tr.Name}

@@ -307,9 +307,7 @@ func TestHasTimedOut(t *testing.T) {
 		name: "TaskRun no timeout",
 		taskRun: &v1beta1.TaskRun{
 			Spec: v1beta1.TaskRunSpec{
-				Timeout: &metav1.Duration{
-					Duration: 0 * time.Minute,
-				},
+				Timeouts: &v1beta1.TimeoutTaskRunFields{Execution: &metav1.Duration{Duration: 0 * time.Minute}},
 			},
 			Status: v1beta1.TaskRunStatus{
 				Status: duckv1.Status{
@@ -328,9 +326,7 @@ func TestHasTimedOut(t *testing.T) {
 		name: "TaskRun timed out",
 		taskRun: &v1beta1.TaskRun{
 			Spec: v1beta1.TaskRunSpec{
-				Timeout: &metav1.Duration{
-					Duration: 10 * time.Second,
-				},
+				Timeouts: &v1beta1.TimeoutTaskRunFields{Execution: &metav1.Duration{Duration: 10 * time.Second}},
 			},
 			Status: v1beta1.TaskRunStatus{
 				Status: duckv1.Status{
