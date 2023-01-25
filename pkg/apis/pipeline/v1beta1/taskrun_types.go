@@ -65,7 +65,7 @@ type TaskRunSpec struct {
 	// scheduling and execution (which replaces previous timeout)
 	Timeouts *TimeoutTaskRunFields `json:"timeouts,omitempty"`
 
-  // todo: remove ould timeout
+  // todo: remove old timeout
 	// Time after which one retry attempt times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
