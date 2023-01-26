@@ -307,6 +307,83 @@ func TestHasTimedOut(t *testing.T) {
 		name: "TaskRun no timeout",
 		taskRun: &v1beta1.TaskRun{
 			Spec: v1beta1.TaskRunSpec{
+				Timeout: &metav1.Duration{
+					Duration: 0 * time.Minute,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: now.Add(-15 * time.Hour)},
+				},
+			},
+		},
+		expectedStatus: false,
+	}, {
+		name: "TaskRun timed out",
+		taskRun: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				Timeout: &metav1.Duration{
+					Duration: 10 * time.Second,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: now.Add(-15 * time.Second)},
+				},
+			},
+		},
+		expectedStatus: true,
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.taskRun.HasTimedOut(context.Background(), testClock)
+			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestExecutionHasTimedOut(t *testing.T) {
+	// IsZero reports whether t represents the zero time instant, January 1, year 1, 00:00:00 UTC
+	zeroTime := time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)
+	testCases := []struct {
+		name           string
+		taskRun        *v1beta1.TaskRun
+		expectedStatus bool
+	}{{
+		name: "TaskRun not started",
+		taskRun: &v1beta1.TaskRun{
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: zeroTime},
+				},
+			},
+		},
+		expectedStatus: false,
+	}, {
+		name: "TaskRun no timeout",
+		taskRun: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
 				Timeouts: &v1beta1.TimeoutTaskRunFields{Execution: &metav1.Duration{Duration: 0 * time.Minute}},
 			},
 			Status: v1beta1.TaskRunStatus{

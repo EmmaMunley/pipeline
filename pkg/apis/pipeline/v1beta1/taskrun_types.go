@@ -59,12 +59,10 @@ type TaskRunSpec struct {
 	// Retries represents how many times this TaskRun should be retried in the event of Task failure.
 	// +optional
 	Retries int `json:"retries,omitempty"`
-
 	// Time after which the Task times out.
 	// Currently two keys are accepted in the map
 	// scheduling and execution (which replaces previous timeout)
 	Timeouts *TimeoutTaskRunFields `json:"timeouts,omitempty"`
-
   // todo: remove old timeout
 	// Time after which one retry attempt times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
@@ -72,7 +70,6 @@ type TaskRunSpec struct {
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration
-
 	PodTemplate *pod.PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
@@ -505,7 +502,7 @@ func (tr *TaskRun) IsRetriable() bool {
 	return len(tr.Status.RetriesStatus) < tr.Spec.Retries
 }
 
-// HasTimedOut returns true if the TaskRun runtime is beyond the allowed execution timeout
+// HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
 func (tr *TaskRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
 	if tr.Status.StartTime.IsZero() {
 		return false
@@ -519,8 +516,33 @@ func (tr *TaskRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
 	return runtime > timeout
 }
 
-// GetTimeout returns the execution timeout for the TaskRun, or the default if not specified
+// GetTimeout returns the timeout for the TaskRun, or the default if not specified
 func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
+	// Use the platform default is no timeout is set
+	if tr.Spec.Timeout == nil {
+		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+		return defaultTimeout * time.Minute
+	}
+	return tr.Spec.Timeout.Duration
+}
+
+
+// HasTimedOut returns true if the TaskRun runtime is beyond the allowed execution timeout
+func (tr *TaskRun) HasExecutionTimedOut(ctx context.Context, c clock.PassiveClock) bool {
+	if tr.Status.StartTime.IsZero() {
+		return false
+	}
+	timeout := tr.GetTimeout(ctx)
+	// If timeout is set to 0 or defaulted to 0, there is no timeout.
+	if timeout == apisconfig.NoTimeoutDuration {
+		return false
+	}
+	runtime := c.Since(tr.Status.StartTime.Time)
+	return runtime > timeout
+}
+
+// GetTimeout returns the execution timeout for the TaskRun, or the default if not specified
+func (tr *TaskRun) GetExecutionTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
 	if tr.Spec.Timeouts.Execution == nil {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
