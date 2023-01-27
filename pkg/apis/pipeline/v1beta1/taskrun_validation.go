@@ -100,12 +100,21 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", ts.StatusMessage), "statusMessage"))
 		}
 	}
-
 	if ts.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ts.Timeout.Duration < 0 {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ts.Timeout.Duration.String()), "timeout"))
 		}
+	}
+	if ts.Timeout != nil {
+		// timeout should be a valid duration of at least 0.
+		if ts.Timeout.Duration < 0 {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ts.Timeout.Duration.String()), "timeout"))
+		}
+	}
+	if ts.Timeouts != nil && ts.Timeout != nil {
+		// only one timeout can be specified
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("Only one timeout field can be specifed for Timout.Duration and Timeouts.Execution.Duration")))
 	}
 	if ts.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ts.PodTemplate))

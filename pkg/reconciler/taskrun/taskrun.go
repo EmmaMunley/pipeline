@@ -140,6 +140,31 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		events.Emit(ctx, nil, afterCondition, tr)
 	}
 
+
+	var pod *corev1.Pod
+	var err error
+
+	// Get or create pod
+	if tr.Status.PodName != "" {
+		pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+		if k8serrors.IsNotFound(err) {
+			// Keep going, this will result in the Pod being created below.
+		} else if err != nil {
+			// This is considered a transient error, so we return error, do not update
+			// the task run condition, and return an error which will cause this key to
+			// be requeued for reconcile.
+			logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
+			return err
+		}
+	}
+
+		// Check if there is a Scheduling Has Timed out
+		if tr.HasSchedulingTimedOut(pod, ctx, c.Clock) {
+			message := fmt.Sprintf("TaskRun %q failed to schedule within %q", tr.Name, tr.GetSchedulingTimeout(ctx))
+			err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
+			return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		}
+
 	// If the TaskRun is complete, run some post run fixtures when applicable
 	if tr.IsDone() {
 		logger.Infof("taskrun done : %s \n", tr.Name)
@@ -164,7 +189,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
-	if tr.HasTimedOut(ctx, c.Clock) {
+	if tr.HasTimedOut(pod, ctx, c.Clock) {
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)

@@ -502,28 +502,62 @@ func (tr *TaskRun) IsRetriable() bool {
 	return len(tr.Status.RetriesStatus) < tr.Spec.Retries
 }
 
+// IsScheduled returns true if the pod is
+func (tr *TaskRun) IsScheduled(pod *corev1.Pod) bool {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled {
+			return c.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
-func (tr *TaskRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
+func (tr *TaskRun) HasTimedOut(pod *corev1.Pod, ctx context.Context, c clock.PassiveClock) bool {
 	if tr.Status.StartTime.IsZero() {
 		return false
 	}
+	//todo rename execution
 	timeout := tr.GetTimeout(ctx)
+
+	schedulingTimeout := tr.Spec.Timeouts.Scheduling
+
 	// If timeout is set to 0 or defaulted to 0, there is no timeout.
-	if timeout == apisconfig.NoTimeoutDuration {
-		return false
+		if timeout == apisconfig.NoTimeoutDuration {
+			return false
+		}
+
+	if (schedulingTimeout == nil || schedulingTimeout.Duration == apisconfig.NoTimeoutDuration) {
+			runtime := c.Since(tr.Status.StartTime.Time)
+			return runtime > timeout
+	} else {
+			podScheduledTime := tr.GetPodScheduledTime(pod)
+			runtime := c.Since(podScheduledTime)
+			return runtime > schedulingTimeout.Duration
 	}
-	runtime := c.Since(tr.Status.StartTime.Time)
-	return runtime > timeout
+
 }
 
 // GetTimeout returns the timeout for the TaskRun, or the default if not specified
+// Currently this supports the timeout field (to be deprecated) or the timeouts.execution field
+// Only one of these fields can be provided
 func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
-	// Use the platform default is no timeout is set
-	if tr.Spec.Timeout == nil {
+	// If both timeouts are specified throw validation err
+	if tr.Spec.Timeouts.Execution != nil && tr.Spec.Timeout != nil {
+			//todo validation error
+			//https://github.com/tektoncd/pipeline/blob/a11c38585b924d9b07b93bc38524889c7413ce1d/pkg/apis/pipeline/v1beta1/taskrun_validation.go#L97-L96
+			return 0
+		// Use the Execution Timeout if Specified
+	} else if tr.Spec.Timeouts.Execution != nil {
+		return tr.Spec.Timeouts.Execution.Duration
+		// Use the old Timeout if Specified
+	}	else if tr.Spec.Timeout != nil {
+		return tr.Spec.Timeout.Duration
+			// Use the platform default is no timeout is set
+	} else {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 		return defaultTimeout * time.Minute
 	}
-	return tr.Spec.Timeout.Duration
 }
 
 
@@ -542,13 +576,65 @@ func (tr *TaskRun) HasExecutionTimedOut(ctx context.Context, c clock.PassiveCloc
 }
 
 // GetTimeout returns the execution timeout for the TaskRun, or the default if not specified
-func (tr *TaskRun) GetExecutionTimeout(ctx context.Context) time.Duration {
+func (tr *TaskRun) c(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
 	if tr.Spec.Timeouts.Execution == nil {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 		return defaultTimeout * time.Minute
 	}
 	return tr.Spec.Timeouts.Execution.Duration
+}
+
+
+
+// HasSchedulingTimeout returns true if a scheduled timeout is set
+func (tr *TaskRun) HasSchedulingTimeout(ctx context.Context) bool {
+		return tr.Spec.Timeouts.Scheduling == nil
+}
+
+// GetSchedulingTimeout returns the scheduling timeout for the TaskRun if set
+// func (tr *TaskRun) GetSchedulingTimeout(ctx context.Context) time.Duration {
+// 	return tr.Spec.Timeouts.Scheduling.Duration
+// }
+
+// IsPodScheduled returns true if pod is scheduled
+func (tr *TaskRun) IsPodScheduled(pod *corev1.Pod) bool {
+	if pod == nil {
+		return false
+	}
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled {
+			return c.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+// GetPodScheduledTime returns the scheduled time for the pod if set
+func (tr *TaskRun) GetPodScheduledTime(pod *corev1.Pod) time.Time {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled {
+			return c.LastTransitionTime.Time
+		}
+	}
+	return metav1.Time{}.Time
+}
+
+// HasSchedulingTimedOut returns true if the TaskRun runtime is beyond the allowed execution timeout
+func (tr *TaskRun) HasSchedulingTimedOut(pod *corev1.Pod, ctx context.Context, c clock.PassiveClock) bool {
+	if (!tr.HasSchedulingTimeout(ctx)) {
+		return false
+	}
+	isPodScheduled := tr.IsPodScheduled(pod)
+	schedulingTimeout := tr.Spec.Timeouts.Scheduling.Duration
+	// If timeout is set to 0 or defaulted to 0, there is no timeout.
+	if schedulingTimeout == apisconfig.NoTimeoutDuration {
+		return false
+	}
+	// Calulcate runtime since TaskRun was created
+	runtime := c.Since(tr.Status.StartTime.Time)
+	// 
+	return runtime > schedulingTimeout && !isPodScheduled
 }
 
 // GetNamespacedName returns a k8s namespaced name that identifies this TaskRun
