@@ -723,6 +723,33 @@
             "$ref": "#/definitions/v1beta1.Param"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "include": {
+          "description": "Include is a list of MatrixInclude Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.MatrixInclude"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1beta1.MatrixInclude": {
+      "description": "MatrixInclude includes a name and params to be used in a Matrix.",
+      "type": "object",
+      "required": [
+        "name",
+        "params"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "params": {
+          "default": {},
+          "$ref": "#/definitions/v1beta1.Param"
         }
       }
     },
@@ -1404,6 +1431,15 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "include": {
+          "description": "Include is a list of MatrixInclude",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.MatrixInclude"
           },
           "x-kubernetes-list-type": "atomic"
         },
