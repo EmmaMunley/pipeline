@@ -158,6 +158,7 @@ func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTas
 	return errs
 }
 
+//validatePipelineParametersVariables validates Pipeline Params Variables in Task or Matrix Parameters
 func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))

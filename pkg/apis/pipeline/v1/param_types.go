@@ -336,6 +336,8 @@ func validateParametersInTaskMatrix(matrix *Matrix) (errs *apis.FieldError) {
 	return errs
 }
 
+// validateParameterInOneOfMatrixOrParams takes a matrix and matrix.Params and validates
+// that the parameters only exist in either matrix.Params or pipelineTask.Params
 func validateParameterInOneOfMatrixOrParams(matrix *Matrix, params []Param) (errs *apis.FieldError) {
 	matrixParameterNames := sets.NewString()
 	if matrix != nil {

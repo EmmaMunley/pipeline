@@ -291,9 +291,19 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 	return errs
 }
 
-// IsMatrixed return whether pipeline task is matrixed
+// IsMatrixed returns whether pipeline task is matrixed
 func (pt *PipelineTask) IsMatrixed() bool {
-	return pt.Matrix != nil && (len(pt.Matrix.Params) > 0 || len(pt.Matrix.Include) > 0)
+	return pt.Matrix != nil && (pt.Matrix.MatrixHasParams() || pt.Matrix.MatrixHasInclude())
+}
+
+// MatrixHasInclude returns whether matrix has Include
+func (matrix *Matrix) MatrixHasInclude() bool {
+	return len(matrix.Include) > 0
+}
+
+// MatrixHasParams returns whether matrix has Params
+func (matrix *Matrix) MatrixHasParams() bool {
+	return len(matrix.Params) > 0
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
