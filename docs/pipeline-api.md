@@ -2,7 +2,7 @@
 ---
 title: Pipeline API
 linkTitle: Pipeline API
-weight: 404
+weight: 1000
 ---
 -->
 
@@ -1500,6 +1500,65 @@ Each array element is supplied to the <code>PipelineTask</code> by substituting 
 The names of the <code>params</code> in the <code>Matrix</code> must match the names of the <code>params</code> in the underlying <code>Task</code> that they will be substituting.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>include</code><br/>
+<em>
+<a href="#tekton.dev/v1.MatrixInclude">
+[]MatrixInclude
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Include is a list of MatrixInclude
+Note this field is in preview mode and not yet supported</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.MatrixInclude">MatrixInclude
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Matrix">Matrix</a>)
+</p>
+<div>
+<p>MatrixInclude allows passing in a specific combinations of Parameters into the Matrix.
+Note this struct is in preview mode and not yet supported</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the specified combination</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<p>Params takes only <code>Parameters</code> of type <code>&quot;string&quot;</code>
+The names of the <code>params</code> must match the names of the <code>params</code> in the underlying <code>Task</code></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.OnErrorType">OnErrorType
@@ -1528,7 +1587,7 @@ The names of the <code>params</code> in the <code>Matrix</code> must match the n
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.MatrixInclude">MatrixInclude</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -3008,6 +3067,17 @@ ConfigSource
 </td>
 <td>
 <p>ConfigSource identifies the source where a resource came from.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>featureFlags</code><br/>
+<em>
+github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
+</em>
+</td>
+<td>
+<p>FeatureFlags identifies the feature flags that were used during the task/pipeline run</p>
 </td>
 </tr>
 </tbody>
@@ -8986,6 +9056,65 @@ Each array element is supplied to the <code>PipelineTask</code> by substituting 
 The names of the <code>params</code> in the <code>Matrix</code> must match the names of the <code>params</code> in the underlying <code>Task</code> that they will be substituting.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>include</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.MatrixInclude">
+[]MatrixInclude
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Include is a list of MatrixInclude
+Note this field is in preview mode and not yet supported</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.MatrixInclude">MatrixInclude
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Matrix">Matrix</a>)
+</p>
+<div>
+<p>MatrixInclude allows passing in a specific combinations of Parameters into the Matrix.
+Note this struct is in preview mode and not yet supported</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the specified combination</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<p>Params takes only <code>Parameters</code> of type <code>&quot;string&quot;</code>
+The names of the <code>params</code> must match the names of the <code>params</code> in the underlying <code>Task</code></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.OnErrorType">OnErrorType
@@ -8999,7 +9128,7 @@ The names of the <code>params</code> in the <code>Matrix</code> must match the n
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.MatrixInclude">MatrixInclude</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -10842,6 +10971,17 @@ ConfigSource
 </td>
 <td>
 <p>ConfigSource identifies the source where a resource came from.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>featureFlags</code><br/>
+<em>
+github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
+</em>
+</td>
+<td>
+<p>FeatureFlags identifies the feature flags that were used during the task/pipeline run</p>
 </td>
 </tr>
 </tbody>
