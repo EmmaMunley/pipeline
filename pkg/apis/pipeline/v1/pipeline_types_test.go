@@ -645,6 +645,34 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 				}}},
 		},
 	}, {
+		name: "parameters in include matrix are strings",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{
+					{Name: "build-1"},
+					{Params: []Param{
+						{Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"}},
+						{Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}}},
+				}},
+		},
+	}, {
+		name: "parameters in include matrix are arrays",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{
+					{Name: "build-1"},
+					{Params: []Param{
+						{Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}}},
+						{Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}}},
+				}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type string only are allowed in matrix",
+			Paths:   []string{"matrix[barfoo]", "matrix[foobar]"},
+		},
+	}, {
 		name: "parameters in matrix contain results references",
 		pt: &PipelineTask{
 			Name: "task",
@@ -695,87 +723,6 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 			ctx := config.ToContext(context.Background(), cfg)
 			if d := cmp.Diff(tt.wantErrs.Error(), tt.pt.validateMatrix(ctx).Error()); d != "" {
 				t.Errorf("PipelineTask.validateMatrix() errors diff %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
-func TestPipelineTask_GetMatrixCombinationsCount(t *testing.T) {
-	tests := []struct {
-		name                    string
-		pt                      *PipelineTask
-		matrixCombinationsCount int
-	}{{
-		name: "combinations count is zero",
-		pt: &PipelineTask{
-			Name: "task",
-		},
-		matrixCombinationsCount: 0,
-	}, {
-		name: "combinations count is one from one parameter",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
-				}}},
-		},
-		matrixCombinationsCount: 1,
-	}, {
-		name: "combinations count is one from two parameters",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
-				}, {
-					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
-				}}},
-		},
-		matrixCombinationsCount: 1,
-	}, {
-		name: "combinations count is two from one parameter",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-		},
-		matrixCombinationsCount: 2,
-	}, {
-		name: "combinations count is nine",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
-				}, {
-					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
-				}}},
-		},
-		matrixCombinationsCount: 9,
-	}, {
-		name: "combinations count is large",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
-				}, {
-					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
-				}, {
-					Name: "quz", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
-				}, {
-					Name: "xyzzy", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
-				}}},
-		},
-		matrixCombinationsCount: 135,
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if d := cmp.Diff(tt.matrixCombinationsCount, tt.pt.GetMatrixCombinationsCount()); d != "" {
-				t.Errorf("PipelineTask.GetMatrixCombinationsCount() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

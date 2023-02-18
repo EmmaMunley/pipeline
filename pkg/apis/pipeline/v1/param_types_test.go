@@ -26,6 +26,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
+	"knative.dev/pkg/apis"
 )
 
 func TestParamSpec_SetDefaults(t *testing.T) {
@@ -451,5 +452,63 @@ func TestArrayReference(t *testing.T) {
 		if d := cmp.Diff(tt.expectedResult, v1.ArrayReference(tt.p)); d != "" {
 			t.Errorf(diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestValidateParamsTypesInMatrix(t *testing.T) {
+	tests := []struct {
+		name     string
+		matrix   *v1.Matrix
+		wantErrs *apis.FieldError
+	}{{
+		name: "parameters in matrix are strings",
+		matrix: &v1.Matrix{
+			Params: []v1.Param{{
+				Name: "foo", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "foo"},
+			}, {
+				Name: "bar", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"},
+			}}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type array only are allowed in matrix",
+			Paths:   []string{"matrix[foo]", "matrix[bar]"},
+		},
+	}, {
+		name: "parameters in matrix are arrays",
+		matrix: &v1.Matrix{
+			Params: []v1.Param{{
+				Name: "foobar", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}, {
+				Name: "barfoo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+			}}},
+	}, {
+		name: "parameters in include matrix are strings",
+		matrix: &v1.Matrix{
+			Include: []v1.MatrixInclude{
+				{Name: "build-1"},
+				{Params: []v1.Param{
+					{Name: "IMAGE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "image-1"}},
+					{Name: "DOCKERFILE", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}}},
+			}},
+	}, {
+		name: "parameters in include matrix are arrays",
+		matrix: &v1.Matrix{
+			Include: []v1.MatrixInclude{
+				{Name: "build-1"},
+				{Params: []v1.Param{
+					{Name: "foobar", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}}},
+					{Name: "barfoo", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}}},
+			}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type string only are allowed in matrix",
+			Paths:   []string{"matrix[barfoo]", "matrix[foobar]"},
+		},
+	},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if d := cmp.Diff(tc.wantErrs.Error(), v1.ValidateParamsTypesInMatrix(tc.matrix).Error()); d != "" {
+				t.Errorf("ValidateParamsTypesInMatrix() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
