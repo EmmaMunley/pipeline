@@ -728,6 +728,89 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 	}
 }
 
+func TestPipelineTask_GetMatrixCombinationsCount(t *testing.T) {
+	tests := []struct {
+		name                    string
+		pt                      *PipelineTask
+		matrixCombinationsCount int
+	}{
+		{
+			name: "combinations count is zero",
+			pt: &PipelineTask{
+				Name: "task",
+			},
+			matrixCombinationsCount: 0,
+		}, {
+			name: "combinations count is one from one parameter",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+					}}},
+			},
+			matrixCombinationsCount: 1,
+		}, {
+			name: "combinations count is one from two parameters",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+					}, {
+						Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
+					}}},
+			},
+			matrixCombinationsCount: 1,
+		}, {
+			name: "combinations count is two from one parameter",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}}},
+			},
+			matrixCombinationsCount: 2,
+		}, {
+			name: "combinations count is nine",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+					}, {
+						Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+					}}},
+			},
+			matrixCombinationsCount: 9,
+		}, {
+			name: "combinations count is large",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+					}, {
+						Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+					}, {
+						Name: "quz", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
+					}, {
+						Name: "xyzzy", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
+					}}},
+			},
+			matrixCombinationsCount: 135,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if d := cmp.Diff(tt.matrixCombinationsCount, tt.pt.GetMatrixCombinationsCount()); d != "" {
+				t.Errorf("PipelineTask.GetMatrixCombinationsCount() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestPipelineTask_ValidateEmbeddedOrType(t *testing.T) {
 	testCases := []struct {
 		name          string
