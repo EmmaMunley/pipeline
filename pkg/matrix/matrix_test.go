@@ -23,14 +23,15 @@ import (
 func Test_FanOut(t *testing.T) {
 	tests := []struct {
 		name             string
-		matrix           []v1beta1.Param
+		matrix           *v1beta1.Matrix
 		wantCombinations Combinations
 	}{{
 		name: "single array in matrix",
-		matrix: []v1beta1.Param{{
-			Name:  "platform",
-			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
-		}},
+		matrix: &v1beta1.Matrix{
+			Params: []v1beta1.Param{{
+				Name:  "platform",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			}}},
 		wantCombinations: Combinations{{
 			MatrixID: "0",
 			Params: []v1beta1.Param{{
@@ -49,16 +50,16 @@ func Test_FanOut(t *testing.T) {
 				Name:  "platform",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
 			}},
-		}},
-	}, {
+		}}}, {
 		name: "multiple arrays in matrix",
-		matrix: []v1beta1.Param{{
-			Name:  "platform",
-			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
-		}, {
-			Name:  "browser",
-			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
-		}},
+		matrix: &v1beta1.Matrix{
+			Params: []v1beta1.Param{{
+				Name:  "platform",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}}}, {
+				Name:  "browser",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}}},
+			},
+		},
 		wantCombinations: Combinations{{
 			MatrixID: "0",
 			Params: []v1beta1.Param{{
@@ -142,6 +143,7 @@ func Test_FanOut(t *testing.T) {
 			}},
 		}},
 	}}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotCombinations := FanOut(tt.matrix)

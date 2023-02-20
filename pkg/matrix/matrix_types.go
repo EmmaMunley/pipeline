@@ -32,6 +32,11 @@ type Combination struct {
 }
 
 func (combinations Combinations) fanOut(param v1beta1.Param) Combinations {
+	combinations = combinations.fanOutInitialMatrixParams(param)
+	return combinations
+}
+
+func (combinations Combinations) fanOutInitialMatrixParams(param v1beta1.Param) Combinations {
 	if len(combinations) == 0 {
 		return initializeCombinations(param)
 	}
