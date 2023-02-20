@@ -308,12 +308,24 @@ func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix 
 	return errs
 }
 
-// validatePipelineParametersVariablesInMatrixParameters validates matrix param value
+// ValidatePipelineParametersVariablesInMatrixParameters validates matrix param value
 // that may contain the reference(s) to other params to make sure those references are used appropriately.
-func validatePipelineParametersVariablesInMatrixParameters(matrix []Param, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	for _, param := range matrix {
-		for idx, arrayElement := range param.Value.ArrayVal {
-			errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
+func ValidatePipelineParametersVariablesInMatrixParameters(matrix *Matrix, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
+	if matrix != nil {
+		if matrix.MatrixHasInclude() {
+			for _, include := range matrix.Include {
+				for idx, param := range include.Params {
+					stringElement := param.Value.StringVal
+					errs = errs.Also(validateStringVariable(stringElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
+				}
+			}
+		}
+		if matrix.MatrixHasParams() {
+			for _, param := range matrix.Params {
+				for idx, arrayElement := range param.Value.ArrayVal {
+					errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
+				}
+			}
 		}
 	}
 	return errs
