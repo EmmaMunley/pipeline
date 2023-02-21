@@ -218,3 +218,125 @@ func Test_ToMap(t *testing.T) {
 		})
 	}
 }
+
+
+
+func Test_Filter(t *testing.T) {
+	tests := []struct {
+		name             string
+		param           v1beta1.Param
+		combinations 		Combinations
+		wantIds 							[]string
+	}{{
+		name: "name GOARCH with value linux/amd64",
+		param: v1beta1.Param{Name: "GOARCH", Value: v1beta1.ParamValue{StringVal: "linux/s390x"}},
+		combinations: Combinations{{
+			MatrixID: "0",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			},{
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "context",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/go117/context"},
+			}},
+		}, {
+			MatrixID: "1",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			},{
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}},
+		}, {
+			MatrixID: "2",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			},{
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "context",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/go117/context"},
+			}},
+		}, {
+			MatrixID: "3",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			},{
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}},
+		}, {
+			MatrixID: "4",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			},{
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			},{
+				Name:  "flags",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
+			},{
+				Name:  "context",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/go117/context"},
+			}},
+		}, {
+			MatrixID: "5",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			},{
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			},{
+				Name:  "flags",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
+			}},
+		}, {
+			MatrixID: "6",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "I-do-not-exist"},
+			}},
+		}},
+		wantIds: []string{
+			"4",
+			"5",
+		},
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matchingIds := Filter(tt.combinations, tt.param)
+			if d := cmp.Diff(tt.wantIds, matchingIds); d != "" {
+				t.Errorf(" Ids did not match the expected matching Ids: %s", d)
+			}
+		})
+	}
+}
+
