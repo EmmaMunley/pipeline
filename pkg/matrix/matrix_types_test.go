@@ -221,17 +221,16 @@ func Test_ToMap(t *testing.T) {
 
 func Test_Filter(t *testing.T) {
 	tests := []struct {
-		name         				string
-		paramNamesMap 			map[string]string
-		combinations 				Combinations
-		wantId      				string
-		wantParamsMapped			map[string]string
+		name             string
+		paramNamesMap    map[string]string
+		combinations     Combinations
+		wantCombinations Combinations
 	}{{
-		name:  "name GOARCH with value linux/amd64",
+		name: "name GOARCH with value linux/amd64",
 		paramNamesMap: map[string]string{
-			"GOARCH": "linux/s390x",
+			"GOARCH":  "linux/s390x",
 			"version": "go1.17",
-			"flags": "-cover -v",
+			"flags":   "-cover -v",
 		},
 		combinations: Combinations{{
 			MatrixID: "0",
@@ -288,20 +287,71 @@ func Test_Filter(t *testing.T) {
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
 			}},
 		}},
-		wantParamsMapped: map[string]string{
-			"flags": "-cover -v",
-		},
-		wantId: "4",
+		wantCombinations: Combinations{{
+			MatrixID: "0",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}},
+		}, {
+			MatrixID: "1",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}},
+		}, {
+			MatrixID: "2",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}},
+		}, {
+			MatrixID: "3",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}},
+		}, {
+			MatrixID: "4",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}, {
+				Name:  "flags",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
+			}},
+		}, {
+			MatrixID: "5",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}},
+		}},
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			newParamsMapped, actualId := Filter(tt.combinations, tt.paramNamesMap)
-			if d := cmp.Diff(tt.wantParamsMapped, newParamsMapped); d != "" {
-				t.Errorf(" Ids did not match the expected matching Ids: %s", d)
-			}
-			if d := cmp.Diff(tt.wantId, actualId); d != "" {
-				t.Errorf(" Ids did not match the expected matching Ids: %s", d)
+			filtered := Filter(tt.combinations, tt.paramNamesMap)
+			if d := cmp.Diff(tt.wantCombinations, filtered); d != "" {
+				t.Errorf("Filter combinations did not match the expected combinations: %s", d)
 			}
 		})
 	}

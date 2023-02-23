@@ -23,37 +23,27 @@ import (
 func FanOut(matrix *v1beta1.Matrix) Combinations {
 	var combinations Combinations
 
-	// Explicit combinations in the Matrix
+	// Explicit combinations in the Matrix return combinations
 	if matrix.MatrixHasInclude() && !matrix.MatrixHasParams() {
 		fmt.Println("Explicit")
 		return combinations.fanOutMatrixIncludeParams(matrix)
 	}
 
-	// Create a set of param names
-	paramNamesMap := make(map[string][]string)
-
+	// If it has params use existing inital matrix logic
 	if matrix.MatrixHasParams() {
 		for _, param := range matrix.Params {
 			combinations = combinations.fanOutInitialMatrixParams(param)
-			// add param name to set
-			paramNamesMap[param.Name] = param.Value.ArrayVal
 		}
 	}
+fmt.Println("INITIAL COMBINATIONS")
 
+	// Matrix has Include and Params
+	// uses the combinations from above
 	if matrix.MatrixHasInclude() {
 		combinations = replaceIncludeMatrixParams(matrix, combinations)
 	}
+	printCombinations(combinations)
 	return combinations
-
 }
 
-// Contains returns true if a string exists in a slice
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
 
-	return false
-}
