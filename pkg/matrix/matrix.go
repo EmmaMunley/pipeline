@@ -35,7 +35,6 @@ func FanOut(matrix *v1beta1.Matrix) Combinations {
 			combinations = combinations.fanOutInitialMatrixParams(param)
 		}
 	}
-fmt.Println("INITIAL COMBINATIONS")
 
 	// Matrix has Include and Params
 	// uses the combinations from above
