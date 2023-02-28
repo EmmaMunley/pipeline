@@ -38,6 +38,32 @@ func (combinations Combinations) fanOut(param v1beta1.Param) Combinations {
 	return combinations.distribute(param)
 }
 
+func (combinations Combinations) fanOutMatrixIncludeParams(matrix v1beta1.Matrix) Combinations {
+	count := 0
+	for i := 1; i < len(matrix.Include); i += 2 {
+		include := matrix.Include[i]
+		params := include.Params
+		combinations = append(combinations, createIncludeCombination(count, params))
+		count++
+	}
+	return combinations
+}
+
+func createIncludeCombination(i int, parameters []v1beta1.Param) *Combination {
+	combination := &Combination{
+		MatrixID: strconv.Itoa(i),
+		Params:   []v1beta1.Param{},
+	}
+	for _, param := range parameters {
+		newParam := v1beta1.Param{
+			Name:  param.Name,
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: param.Value.StringVal},
+		}
+		combination.Params = append(combination.Params, newParam)
+	}
+	return combination
+}
+
 func (combinations Combinations) distribute(param v1beta1.Param) Combinations {
 	// when there are existing combinations, this is a non-first parameter in the matrix, and we need to distribute
 	// it among the existing combinations

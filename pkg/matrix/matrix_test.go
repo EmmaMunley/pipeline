@@ -150,6 +150,53 @@ func Test_FanOut(t *testing.T) {
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
 			}},
 		}},
+
+	}, {
+		name: "explicit combinations in matrix",
+		matrix: v1beta1.Matrix{
+			Include: []v1beta1.MatrixInclude{{
+				Name: "build-1"}, {
+				Params: []v1beta1.Param{{
+					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-1"},
+				}, {
+					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+			}, {
+				Name: "build-2",
+			}, {
+				Params: []v1beta1.Param{{
+					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-2"},
+				}, {
+					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
+			}, {
+				Name: "build-3",
+			}, {
+				Params: []v1beta1.Param{{
+					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-3"},
+				}, {
+					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
+			}},
+		},
+		wantCombinations: Combinations{
+			{
+				MatrixID: "0",
+				Params: []v1beta1.Param{{
+					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-1"},
+				}, {
+					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+			}, {
+				MatrixID: "1",
+				Params: []v1beta1.Param{{
+					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-2"},
+				}, {
+					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
+			}, {
+				MatrixID: "2",
+				Params: []v1beta1.Param{{
+					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-3"},
+				}, {
+					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

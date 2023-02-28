@@ -20,8 +20,17 @@ import (
 // FanOut produces combinations of Parameters of type String from a slice of Parameters of type Array.
 func FanOut(matrix v1beta1.Matrix) Combinations {
 	var combinations Combinations
+
+	// If Matrix Include params exists, generate explicit combinations
+	if matrix.MatrixHasInclude() && !matrix.MatrixHasParams() {
+			return combinations.fanOutMatrixIncludeParams(matrix)
+	}
+
+	// Generate initial combinations with matrx.Params
 	for _, parameter := range matrix.Params {
 		combinations = combinations.fanOut(parameter)
 	}
+
 	return combinations
 }
+
