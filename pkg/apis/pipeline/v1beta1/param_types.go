@@ -130,6 +130,16 @@ func (ps Params) extractParamValuesFromParams() []string {
 	return pvs
 }
 
+// extractParamMapArrVals creates a param map with the key: param.Name and
+// val: param.Value.ArrayVal
+func (ps Params) extractParamMapArrVals() map[string][]string {
+	paramsMap := make(map[string][]string)
+	for _, p := range ps {
+		paramsMap[p.Name] = p.Value.ArrayVal
+	}
+	return paramsMap
+}
+
 // extractParamArrayLengths extract and return the lengths of all array params
 // Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
 func (ps Params) extractParamArrayLengths() map[string]int {
@@ -520,57 +530,6 @@ func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix 
 			errs = errs.Also(validateParamStringValue(param, prefix, paramNames, arrayParamNames, objectParamNameKeys))
 		}
 		taskParamNames.Insert(param.Name)
-	}
-	return errs
-}
-
-// validatePipelineParametersVariablesInMatrixParameters validates matrix param value
-// that may contain the reference(s) to other params to make sure those references are used appropriately.
-func validatePipelineParametersVariablesInMatrixParameters(matrix []Param, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	for _, param := range matrix {
-		for idx, arrayElement := range param.Value.ArrayVal {
-			errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
-		}
-	}
-	return errs
-}
-
-// validateParamTypesInMatrix validates the type of parameter
-// for Matrix.Params and Matrix.Include.Params
-// Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
-func validateParamTypesInMatrix(matrix *Matrix) (errs *apis.FieldError) {
-	if matrix != nil {
-		if matrix.MatrixHasInclude() {
-			for _, include := range matrix.Include {
-				for _, param := range include.Params {
-					if param.Value.Type != ParamTypeString {
-						errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type string only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.include.params", param.Name))
-					}
-				}
-			}
-		}
-		if matrix.MatrixHasParams() {
-			for _, param := range matrix.Params {
-				if param.Value.Type != ParamTypeArray {
-					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type array only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.params", param.Name))
-				}
-			}
-		}
-	}
-	return errs
-}
-
-func validateParameterInOneOfMatrixOrParams(matrix *Matrix, params []Param) (errs *apis.FieldError) {
-	matrixParameterNames := sets.NewString()
-	if matrix != nil {
-		for _, param := range matrix.Params {
-			matrixParameterNames.Insert(param.Name)
-		}
-	}
-	for _, param := range params {
-		if matrixParameterNames.Has(param.Name) {
-			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
-		}
 	}
 	return errs
 }
