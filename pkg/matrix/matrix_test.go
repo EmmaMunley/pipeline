@@ -14,6 +14,8 @@ limitations under the License.
 package matrix
 
 import (
+	"encoding/json"
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -155,78 +157,97 @@ func Test_FanOut(t *testing.T) {
 		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
 		// 	}},
 		// }, {
-		// 	MatrixID: "1",
-		// 	Params: []v1beta1.Param{{
-		// 		Name:  "platform",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+		// 	name: "multiple arrays in matrix",
+		// 	matrix: &v1beta1.Matrix{
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
+		// 		}}},
+		// 	wantCombinations: Combinations{{
+		// 		MatrixID: "0",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
+		// 		}},
 		// 	}, {
-		// 		Name:  "browser",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
-		// 	}},
-		// }, {
-		// 	MatrixID: "2",
-		// 	Params: []v1beta1.Param{{
-		// 		Name:  "platform",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+		// 		MatrixID: "1",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
+		// 		}},
 		// 	}, {
-		// 		Name:  "browser",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
-		// 	}},
-		// }, {
-		// 	MatrixID: "3",
-		// 	Params: []v1beta1.Param{{
-		// 		Name:  "platform",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+		// 		MatrixID: "2",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
+		// 		}},
 		// 	}, {
-		// 		Name:  "browser",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
-		// 	}},
-		// }, {
-		// 	MatrixID: "4",
-		// 	Params: []v1beta1.Param{{
-		// 		Name:  "platform",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+		// 		MatrixID: "3",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
+		// 		}},
 		// 	}, {
-		// 		Name:  "browser",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
-		// 	}},
-		// }, {
-		// 	MatrixID: "5",
-		// 	Params: []v1beta1.Param{{
-		// 		Name:  "platform",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+		// 		MatrixID: "4",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
+		// 		}},
 		// 	}, {
-		// 		Name:  "browser",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
-		// 	}},
-		// }, {
-		// 	MatrixID: "6",
-		// 	Params: []v1beta1.Param{{
-		// 		Name:  "platform",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+		// 		MatrixID: "5",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
+		// 		}},
 		// 	}, {
-		// 		Name:  "browser",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
-		// 	}},
-		// }, {
-		// 	MatrixID: "7",
-		// 	Params: []v1beta1.Param{{
-		// 		Name:  "platform",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+		// 		MatrixID: "6",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
+		// 		}},
 		// 	}, {
-		// 		Name:  "browser",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
-		// 	}},
-		// }, {
-		// 	MatrixID: "8",
-		// 	Params: []v1beta1.Param{{
-		// 		Name:  "platform",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+		// 		MatrixID: "7",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
+		// 		}},
 		// 	}, {
-		// 		Name:  "browser",
-		// 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
+		// 		MatrixID: "8",
+		// 		Params: []v1beta1.Param{{
+		// 			Name:  "platform",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+		// 		}, {
+		// 			Name:  "browser",
+		// 			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
+		// 		}},
 		// 	}},
-		// }},
 	}, {
 		name: "explicit combinations in matrix",
 		matrix: v1beta1.Matrix{
@@ -251,59 +272,49 @@ func Test_FanOut(t *testing.T) {
 				}, {
 					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
 			}},
-		}, wantCombinations: Combinations{
+		},
+		wantCombinations: Combinations{
 			{
+				MatrixID: "0",
 				Params: []v1beta1.Param{{
 					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-1"},
 				}, {
 					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
 			}, {
+				MatrixID: "1",
 				Params: []v1beta1.Param{{
 					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-2"},
 				}, {
 					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
 			}, {
+				MatrixID: "2",
 				Params: []v1beta1.Param{{
 					Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-3"},
 				}, {
 					Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
 			},
 		},
-		// wantCombinations: Combinations{
-		// 	{
-		// 		MatrixID: "0",
-		// 		Params: []v1beta1.Param{{
-		// 			Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-1"},
-		// 		}, {
-		// 			Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
-		// 	}, {
-		// 		MatrixID: "1",
-		// 		Params: []v1beta1.Param{{
-		// 			Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-2"},
-		// 		}, {
-		// 			Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
-		// 	}, {
-		// 		MatrixID: "2",
-		// 		Params: []v1beta1.Param{{
-		// 			Name: "IMAGE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "image-3"},
-		// 		}, {
-		// 			Name: "DOCKERFILE", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
-		// 	},
-		// },
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCombinations := FanOut(tt.matrix)
-			wantCombinationsTesting := getCombinationsTesting(tt.wantCombinations)
-			gotCombinationsTesting := getCombinationsTesting(gotCombinations)
-			if !cmp.Equal(wantCombinationsTesting, gotCombinationsTesting) {
-				t.Errorf("Combinations of Parameters did not match the expected Combinations:")
-				printCombinations(tt.wantCombinations)
-				printCombinations(gotCombinations)
+			gotCombinations := FanOut(*tt.matrix)
+
+			gotEncodedCombinations, err := json.Marshal(gotCombinations)
+			if err != nil {
+				t.Error(err)
 			}
-			// if d := cmp.Diff(tt.wantCombinations, gotCombinations); d != "" {
-			// 	t.Errorf("Combinations of Parameters did not match the expected Combinations: %s", d)
-			// }
+
+			wantEncodedCombinations, err := json.Marshal(tt.wantCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			sort.Slice(wantEncodedCombinations, func(i int, j int) bool { return wantEncodedCombinations[i] < wantEncodedCombinations[j] })
+			sort.Slice(gotEncodedCombinations, func(i int, j int) bool { return gotEncodedCombinations[i] < gotEncodedCombinations[j] })
+
+			if d := cmp.Diff(wantEncodedCombinations, gotEncodedCombinations); d != "" {
+				t.Errorf("Combinations of Parameters did not match the expected Combinations: %s", d)
+			}
 		})
 	}
 }
@@ -328,10 +339,10 @@ func Test_FanOut_COMMONPACKAGE(t *testing.T) {
 			}},
 		},
 		wantCombinations: Combinations{{
-			MatrixID: "0",
+			MatrixID: "1",
 			Params: []v1beta1.Param{{
 				Name:  "GOARCH",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
 			}, {
 				Name:  "version",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
@@ -340,10 +351,10 @@ func Test_FanOut_COMMONPACKAGE(t *testing.T) {
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
 			}},
 		}, {
-			MatrixID: "1",
+			MatrixID: "0",
 			Params: []v1beta1.Param{{
 				Name:  "GOARCH",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
 			}, {
 				Name:  "version",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
@@ -367,7 +378,7 @@ func Test_FanOut_COMMONPACKAGE(t *testing.T) {
 			MatrixID: "3",
 			Params: []v1beta1.Param{{
 				Name:  "GOARCH",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390"},
 			}, {
 				Name:  "version",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
@@ -391,7 +402,7 @@ func Test_FanOut_COMMONPACKAGE(t *testing.T) {
 			MatrixID: "5",
 			Params: []v1beta1.Param{{
 				Name:  "GOARCH",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64x"},
 			}, {
 				Name:  "version",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
@@ -404,7 +415,21 @@ func Test_FanOut_COMMONPACKAGE(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotCombinations := FanOut(*tt.matrix)
-			if d := cmp.Diff(tt.wantCombinations, gotCombinations); d != "" {
+
+			gotEncodedCombinations, err := json.Marshal(gotCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			wantEncodedCombinations, err := json.Marshal(tt.wantCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			sort.Slice(wantEncodedCombinations, func(i int, j int) bool { return wantEncodedCombinations[i] < wantEncodedCombinations[j] })
+			sort.Slice(gotEncodedCombinations, func(i int, j int) bool { return gotEncodedCombinations[i] < gotEncodedCombinations[j] })
+
+			if d := cmp.Diff(wantEncodedCombinations, gotEncodedCombinations); d != "" {
 				t.Errorf("Combinations of Parameters did not match the expected Combinations: %s", d)
 			}
 		})
