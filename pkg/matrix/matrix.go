@@ -31,6 +31,12 @@ func FanOut(matrix v1beta1.Matrix) Combinations {
 		combinations = combinations.fanOut(parameter)
 	}
 
+	// Matrix has Include and Params
+	// uses the combinations from above
+	if matrix.MatrixHasInclude() {
+		combinations = replaceIncludeMatrixParams(matrix, combinations)
+	}
+
 	return combinations
 }
 
