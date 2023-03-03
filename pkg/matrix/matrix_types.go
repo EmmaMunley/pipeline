@@ -114,14 +114,29 @@ func createMappedParams(i int, name string, value string, parameters []v1beta1.P
 // and the val: param.Val.StringVal or param.Val.ArrayVal
 func mapMatrixIncludeParams(matrixInclude []v1beta1.MatrixInclude) []map[string]string {
 	var mappedMatrixIncludeParamsSlice []map[string]string
-	paramMap := make(map[string]string)
-	for _, matrixInclude := range matrixInclude {
-		for _, param := range matrixInclude.Params {
+	for _, include := range matrixInclude {
+		paramMap := make(map[string]string)
+		for _, param := range include.Params {
 			paramMap[param.Name] = param.Value.StringVal
-			mappedMatrixIncludeParamsSlice = append(mappedMatrixIncludeParamsSlice, paramMap)
 		}
+		mappedMatrixIncludeParamsSlice = append(mappedMatrixIncludeParamsSlice, paramMap)
 	}
 	return mappedMatrixIncludeParamsSlice
+}
+
+// mapCombinations returs a slice of mapped combinations with the key: combination.Name
+// and the val: combination.Value.StringVal
+func mapCombinations(combinations Combinations) []map[string]string {
+	var mappedCombinationsSlice []map[string]string
+	for _, combinations := range combinations {
+		combinationsMap := make(map[string]string)
+		for _, combination := range combinations.Params {
+			// add param name to set
+			combinationsMap[combination.Name] = combination.Value.StringVal
+		}
+		mappedCombinationsSlice = append(mappedCombinationsSlice, combinationsMap)
+	}
+	return mappedCombinationsSlice
 }
 
 // createSetMatrixParamName creates a set of matrix param names
@@ -145,7 +160,6 @@ func mapMatrixParams(matrixParam []v1beta1.Param) map[string][]string {
 
 func replaceIncludeMatrixParams(matrix v1beta1.Matrix, combinations Combinations) Combinations {
 	var finalCombinations Combinations
-
 	// Create [][] mapped Params to iterate over instead of nested Params
 	mappedMatrixIncludeParamsSlice := mapMatrixIncludeParams(matrix.Include)
 	fmt.Println("mappedParamsSlice", mappedMatrixIncludeParamsSlice)
@@ -157,53 +171,46 @@ func replaceIncludeMatrixParams(matrix v1beta1.Matrix, combinations Combinations
 	matrixParamsMap := mapMatrixParams(matrix.Params)
 	fmt.Println("matrixParamsMap", matrixParamsMap)
 
-	var mappedCombinationsSlice []map[string]string
+	mappedCombinationsSlice := mapCombinations(combinations)
+	fmt.Println("mappedCombinationsSlice", mappedCombinationsSlice)
 
-	for _, combinations := range combinations {
-		combinationsMap := make(map[string]string)
-		for _, combination := range combinations.Params {
-			// add param name to set
-			combinationsMap[combination.Name] = combination.Value.StringVal
-		}
-		mappedCombinationsSlice = append(mappedCombinationsSlice, combinationsMap)
-	}
-
-	// Use case: some or all matching params
 	for i := 0; i < len(mappedMatrixIncludeParamsSlice); i++ {
 		matrixIncludeParamMap := mappedMatrixIncludeParamsSlice[i]
-		// Filter out params to only include new params
-		finalCombinations = Filter(combinations, matrixIncludeParamMap)
+		printCombinations(finalCombinations)
+		// return finalCombinations
 
 		for name, val := range matrixIncludeParamMap {
-			// USE CASE
+
+			// USE CASE I DO NOT EXIST
 			// handle the use case where the name does not exist and a new combo is appended to combinations
 			if !matrixParamNames[name] {
 				fmt.Println("match not found", name, val)
 				// Add new params at the current combination.MatrixID
-				for _, combination := range finalCombinations {
-					fmt.Println("BEFORE APPENDING PARAMS:", combination.Params)
-					combination.Params = append(combination.Params, createNewStringParam(name, val))
-					fmt.Println("AFTER APPENDING PARAMS:", combination.Params)
+				for _, filteredCombination := range finalCombinations {
+					fmt.Println("BEFORE APPENDING PARAMS:", filteredCombination.Params)
+					filteredCombination.Params = append(filteredCombination.Params, createNewStringParam(name, val))
+					fmt.Println("AFTER APPENDING PARAMS:", filteredCombination.Params)
+				}
+			} else {
+				// LOGIC WHEN NAME EXISTS BUT VALUE DOES NOT
+				// GENERATE NEW COMBINATION
+				name, val := paramValueNotFound(mappedMatrixIncludeParamsSlice, matrixParamsMap)
+				fmt.Println("paramValueNotFound", name, val)
+				combinationLen := len(finalCombinations)
+				if name != "" && val != "" {
+					new := createCombination(combinationLen, name, val, []v1beta1.Param{})
+					fmt.Println("BEDORE NEW COMBO")
+					printCombinations(finalCombinations)
+					fmt.Println("BEFORE LEN:", len(finalCombinations))
+					finalCombinations = append(finalCombinations, new)
+					fmt.Println("AFTER NEW COMBO")
+					printCombinations(finalCombinations)
+					fmt.Println("AFTER LEN:", len(finalCombinations))
 				}
 			}
 		}
 	}
-
-	// LOGIC FOR COMMON PARAMS TO APPEND THAT ARE NOT IN PARAMS BUT ARE IN INCLUDE PARAMS
-	name, val := paramValueNotFound(mappedMatrixIncludeParamsSlice, matrixParamsMap)
-	combinationLen := len(combinations)
-	fmt.Println("len Combination", combinationLen)
-	if name != "" && val != "" {
-		new := createIncludeCombination(combinationLen-1, []v1beta1.Param{})
-		fmt.Println("new Combination??", new)
-		fmt.Println("AFTER ADDING NEW COMBO:", combinationLen)
-		combinations = append(combinations, new)
-		fmt.Println("AFTER ADDING NEW COMBO:", combinationLen)
-	}
-
-	// // Otherwise the param value does not exist
-	// // New combination generated
-	fmt.Println("finalCombinations", finalCombinations.ToMap())
+	printCombinations(finalCombinations)
 	return finalCombinations
 }
 
@@ -216,27 +223,27 @@ func (combinations Combinations) ToMap() map[string][]v1beta1.Param {
 	return m
 }
 
-func Filter(combinations Combinations, paramMap map[string]string) Combinations {
-	// len := len(combinations)
-	for _, combination := range combinations {
-		// id := combination.MatrixID
-
-		// Check if all the values in combinationParams exist in includeParams
-		matchesAllValues := matchesAllValues(combination.Params, paramMap)
-		if matchesAllValues {
-			fmt.Println("combination.Params", combination.Params)
-			fmt.Println("paramMap", paramMap)
-
-			filteredParams := removeDupsInParamMap(combination.Params, paramMap)
-			fmt.Println("filteredParams", filteredParams)
-			// Add new params at the current combination.MatrixID
-			for name, val := range filteredParams {
-				// fmt.Println("BEFORE APPENDING PARAMS:", combination.Params)
-				combination.Params = append(combination.Params, createNewStringParam(name, val))
-				// fmt.Println("AFTER APPENDING PARAMS:", combination.Params)
+// Filter takes all combinations and a paramMap and filters out any duplicate param names and values
+// that also exist in the combination, leaving only new params that are appending to the combination.
+// This returns combinations with any missing params appended
+func Filter(combinations Combinations, mappedMatrixIncludeParamsSlice []map[string]string) Combinations {
+	for _, matrixIncludeParamMap := range mappedMatrixIncludeParamsSlice {
+		for _, combination := range combinations {
+			// Check if all the values in combinationParams exist in includeParams
+			matchesAllValues := matchesAllValues(combination.Params, matrixIncludeParamMap)
+			filteredParams := removeDupsInParamMap(combination.Params, matrixIncludeParamMap)
+			fmt.Print("FILTERED PARAMS", filteredParams)
+			if matchesAllValues {
+				filteredParams := removeDupsInParamMap(combination.Params, matrixIncludeParamMap)
+				fmt.Println("filteredParams", filteredParams)
+				for name, val := range filteredParams {
+					fmt.Println("BEFORE APPENDING PARAMS:", combination.Params)
+					combination.Params = append(combination.Params, createNewStringParam(name, val))
+					fmt.Println("AFTER APPENDING PARAMS:", combination.Params)
+				}
 			}
 		}
-
+		printCombinations(combinations)
 	}
 	return combinations
 }
@@ -247,8 +254,6 @@ func createNewStringParam(name string, val string) v1beta1.Param {
 		Name:  name,
 		Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: val},
 	}
-	//OUTPUT IS 	{Name: "flags", Value: v1beta1.ParamValue{Type: "string", StringVal: "-cover -v"}},
-	// WANT {Name: "version", Value: {Type: "string", StringVal: "go1.18.1"}},
 	return newParam
 }
 
@@ -287,12 +292,19 @@ func paramValueNotFound(matrixIncludeParamMap []map[string]string, matrixParamsM
 	for _, paramMap := range matrixIncludeParamMap {
 		// Get the name
 		for name, val := range paramMap {
-			if matrixVal, exists := matrixParamsMap[name]; exists {
+			fmt.Println("matrixParamsMap", matrixParamsMap)
+			fmt.Println("name", name)
+
+			if matrixVal, ok := matrixParamsMap[name]; ok {
 				fmt.Println("NAME EXISTS", matrixVal)
 				if !slices.Contains(matrixVal, val) {
 					fmt.Println("VAL DOES NOT EXIST")
+					fmt.Println("matrixVal", matrixVal)
 					fmt.Println("VAL", val)
 					// create a combination
+					fmt.Println("CREATE NEW COMBO")
+					fmt.Println("NAME", name)
+					fmt.Println("VAL", val)
 					return name, val
 				}
 
@@ -333,16 +345,23 @@ func countParamValues(combinationParams []v1beta1.Param, paramNamesMap map[strin
 func removeDupsInParamMap(combinationParams []v1beta1.Param, paramNamesMap map[string]string) map[string]string {
 	fmt.Println("removeDupsInParamMap")
 	fmt.Println("BEFORE:", paramNamesMap)
+
+	// copy a map
+	paramNamesMapCopy := make(map[string]string)
+	for k, v := range paramNamesMap {
+		paramNamesMapCopy[k] = v
+	}
+
 	for _, combinationParam := range combinationParams {
 		// check does each seeking param exist in the combinationParams
-		if val, exist := paramNamesMap[combinationParam.Name]; exist {
+		if val, exist := paramNamesMapCopy[combinationParam.Name]; exist {
 			if val == combinationParam.Value.StringVal {
-				delete(paramNamesMap, combinationParam.Name)
+				delete(paramNamesMapCopy, combinationParam.Name)
 			}
 		}
 	}
-	fmt.Println("AFTER:", paramNamesMap)
-	return paramNamesMap
+	fmt.Println("AFTER:", paramNamesMapCopy)
+	return paramNamesMapCopy
 }
 
 func printCombinations(combinations Combinations) {

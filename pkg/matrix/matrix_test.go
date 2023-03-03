@@ -442,7 +442,7 @@ func Test_FanOut_NEWCOMBO(t *testing.T) {
 		matrix           *v1beta1.Matrix
 		wantCombinations Combinations
 	}{{
-		name: "TEST COMMON PACKAGE",
+		name: "NEW COMBO",
 		matrix: &v1beta1.Matrix{
 			Params: []v1beta1.Param{{
 				Name: "GOARCH", Value: v1beta1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
@@ -520,157 +520,321 @@ func Test_FanOut_NEWCOMBO(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotCombinations := FanOut(*tt.matrix)
-			if d := cmp.Diff(tt.wantCombinations, gotCombinations); d != "" {
+
+			gotEncodedCombinations, err := json.Marshal(gotCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			wantEncodedCombinations, err := json.Marshal(tt.wantCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			sort.Slice(wantEncodedCombinations, func(i int, j int) bool { return wantEncodedCombinations[i] < wantEncodedCombinations[j] })
+			sort.Slice(gotEncodedCombinations, func(i int, j int) bool { return gotEncodedCombinations[i] < gotEncodedCombinations[j] })
+
+			if d := cmp.Diff(wantEncodedCombinations, gotEncodedCombinations); d != "" {
 				t.Errorf("Combinations of Parameters did not match the expected Combinations: %s", d)
 			}
 		})
 	}
 }
 
-// func Test_FanOut_FILTER(t *testing.T) {
-// 	tests := []struct {
-// 		name             string
-// 		matrix           *v1beta1.Matrix
-// 		wantCombinations Combinations
-// 	}{{
-// 		name: "ORIGINAL COMBINATION ALL 3",
-// 		matrix: &v1beta1.Matrix{
-// 			Params: []v1beta1.Param{{
-// 				Name: "GOARCH", Value: v1beta1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
-// 			}, {
-// 				Name: "version", Value: v1beta1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
-// 			},
-// 			Include: []v1beta1.MatrixInclude{{
-// 				Name: "common-package",
-// 				Params: []v1beta1.Param{{
-// 					Name: "package", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"}}},
-// 			}, {
-// 				Name: "s390x-no-race",
-// 				Params: []v1beta1.Param{{
-// 					Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
-// 				}, {
-// 					Name: "flags", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"}}},
-// 			}, {
-// 				Name: "go117-context",
-// 				Params: []v1beta1.Param{{
-// 					Name: "version", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
-// 				}, {
-// 					Name: "context", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/go117/context"}}},
-// 			}, {
-// 				Name: "non-existent-arch",
-// 				Params: []v1beta1.Param{{
-// 					Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "I-do-not-exist"}},
-// 				},
-// 			}},
-// 		},
-// 		wantCombinations: Combinations{{
-// 			MatrixID: "0",
-// 			Params: []v1beta1.Param{{
-// 				Name:  "GOARCH",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
-// 			}, {
-// 				Name:  "version",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
-// 			}, {
-// 				Name:  "package",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
-// 			}},
-// 		}, {
-// 			MatrixID: "1",
-// 			Params: []v1beta1.Param{{
-// 				Name:  "GOARCH",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
-// 			}, {
-// 				Name:  "version",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
-// 			}, {
-// 				Name:  "package",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
-// 			}},
-// 		}, {
-// 			MatrixID: "2",
-// 			Params: []v1beta1.Param{{
-// 				Name:  "GOARCH",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
-// 			}, {
-// 				Name:  "version",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
-// 			}, {
-// 				Name:  "package",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
-// 			}},
-// 		}, {
-// 			MatrixID: "3",
-// 			Params: []v1beta1.Param{{
-// 				Name:  "GOARCH",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
-// 			}, {
-// 				Name:  "version",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
-// 			}, {
-// 				Name:  "package",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
-// 			}},
-// 		}, {
-// 			MatrixID: "4",
-// 			Params: []v1beta1.Param{{
-// 				Name:  "GOARCH",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
-// 			}, {
-// 				Name:  "version",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
-// 			}, {
-// 				Name:  "package",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
-// 			}},
-// 		}, {
-// 			MatrixID: "5",
-// 			Params: []v1beta1.Param{{
-// 				Name:  "GOARCH",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
-// 			}, {
-// 				Name:  "version",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
-// 			}, {
-// 				Name:  "package",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
-// 			}}}, {
-// 			MatrixID: "6",
-// 			Params: []v1beta1.Param{{
-// 				Name:  "GOARCH",
-// 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "I-do-not-exist"},
-// 			}},
-// 		}},
-// 	}}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			gotCombinations := FanOut(*tt.matrix)
-// 			if d := cmp.Diff(tt.wantCombinations, gotCombinations); d != "" {
-// 				t.Errorf("Combinations of Parameters did not match the expected Combinations: %s", d)
-// 			}
-// 		})
-// 	}
-// }
+//	Matrix: &Matrix{
+//		Params: []Param{{
+//			Name: "GOARCH", Value: v1beta1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+//		}, {
+//			Name: "version", Value: v1beta1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+//		},
+//		Include: []MatrixInclude{{
+//			Name: "s390x-no-race",
+//			Params: []Param{{
+//				Name: "GOARCH", Value: v1beta1.ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+//			}, {
+//				Name: "flags", Value: v1beta1.ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
+//			}, {
+//				Name: "version", Value: v1beta1.ParamValue{Type: ParamTypeString, StringVal: "go1.17"}}},
+//		}},
+//	}},
+func Test_FanOut_FILTER3(t *testing.T) {
+	tests := []struct {
+		name             string
+		matrix           *v1beta1.Matrix
+		wantCombinations Combinations
+	}{{
+		name: "FILTER 3",
+		matrix: &v1beta1.Matrix{
+			Params: []v1beta1.Param{{
+				Name: "GOARCH", Value: v1beta1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "version", Value: v1beta1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+			},
+			Include: []v1beta1.MatrixInclude{{
+				Name: "390x-no-race",
+				Params: []v1beta1.Param{{
+					Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"}}, {
+					Name: "flags", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"}}, {
+					Name: "version", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"}}},
+			},
+				{
+					Name: "amd64-no-race",
+					Params: []v1beta1.Param{{
+						Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"}}, {
+						Name: "flags", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"}}, {
+						Name: "version", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"}}},
+				},
+			},
+		},
+		wantCombinations: Combinations{{
+			MatrixID: "0",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}},
+		}, {
+			MatrixID: "1",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}, {
+				Name:  "flags",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
+			}},
+		}, {
+			MatrixID: "2",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}, {
+				Name:  "flags",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
+			}},
+		}, {
+			MatrixID: "3",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}},
+		}, {
+			MatrixID: "4",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}},
+		}, {
+			MatrixID: "5",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotCombinations := FanOut(*tt.matrix)
 
-// {
-// 	name: "params and include in matrix with one overriding combinations params",
-// 	pt: &PipelineTask{
-// 		Name: "task",
-// 		Matrix: &Matrix{
-// 			Params: []Param{{
-// 				Name: "GOARCH", Value: v1beta1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
-// 			}, {
-// 				Name: "version", Value: v1beta1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
-// 			},
-// 			Include: []MatrixInclude{{
-// 				Name: "s390x-no-race",
-// 				Params: []Param{{
-// 					Name: "GOARCH", Value: v1beta1.ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
-// 				}, {
-// 					Name: "flags", Value: v1beta1.ParamValue{Type: ParamTypeString, StringVal: "-cover -v"},
-// 				}, {
-// 					Name: "version", Value: v1beta1.ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
-// 			}},
-// 		}},
-// 	matrixCombinationsCount: 6,
-// }}
+			gotEncodedCombinations, err := json.Marshal(gotCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			wantEncodedCombinations, err := json.Marshal(tt.wantCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			sort.Slice(wantEncodedCombinations, func(i int, j int) bool { return wantEncodedCombinations[i] < wantEncodedCombinations[j] })
+			sort.Slice(gotEncodedCombinations, func(i int, j int) bool { return gotEncodedCombinations[i] < gotEncodedCombinations[j] })
+
+			if d := cmp.Diff(wantEncodedCombinations, gotEncodedCombinations); d != "" {
+				t.Errorf("Combinations of Parameters did not match the expected Combinations: %s", d)
+			}
+		})
+	}
+}
+
+func Test_FanOut_FILTER_TEST_ALL(t *testing.T) {
+	tests := []struct {
+		name             string
+		matrix           *v1beta1.Matrix
+		wantCombinations Combinations
+	}{{
+		name: "ORIGINAL COMBINATION ALL 3",
+		matrix: &v1beta1.Matrix{
+			Params: []v1beta1.Param{{
+				Name: "GOARCH", Value: v1beta1.ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+			}, {
+				Name: "version", Value: v1beta1.ParamValue{ArrayVal: []string{"go1.17", "go1.18.1"}}},
+			},
+			Include: []v1beta1.MatrixInclude{{
+				Name: "common-package",
+				Params: []v1beta1.Param{{
+					Name: "package", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"}}},
+			}, {
+				Name: "s390x-no-race",
+				Params: []v1beta1.Param{{
+					Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+				}, {
+					Name: "flags", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"}}},
+			}, {
+				Name: "go117-context",
+				Params: []v1beta1.Param{{
+					Name: "version", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+				}, {
+					Name: "context", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/go117/context"}}},
+			}, {
+				Name: "non-existent-arch",
+				Params: []v1beta1.Param{{
+					Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "I-do-not-exist"}},
+				},
+			}},
+		},
+		// { "GOARCH": "linux/amd64", "version": "go1.17", "package": "path/to/common/package/", "context": "path/to/go117/context" }
+
+		// { "GOARCH": "linux/amd64", "version": "go1.18.1", "package": "path/to/common/package/" }
+
+		// { "GOARCH": "linux/ppc64le", "version": "go1.17", "package": "path/to/common/package/", "context": "path/to/go117/context" }
+
+		// { "GOARCH": "linux/ppc64le", "version": "go1.18.1", "package": "path/to/common/package/" }
+
+		// { "GOARCH": "linux/s390x", "version": "go1.17", "package": "path/to/common/package/", "flags": "-cover -v", "context": "path/to/go117/context" }
+
+		// { "GOARCH": "linux/s390x", "version": "go1.18.1", "package": "path/to/common/package/", "flags": "-cover -v" }
+
+		// { "GOARCH": "I-do-not-exist" }
+		wantCombinations: Combinations{{
+			MatrixID: "0",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}, {
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "context",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/go117/context"},
+			}},
+		}, {
+			MatrixID: "1",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}, {
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}},
+		}, {
+			MatrixID: "2",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}, {
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "context",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/go117/context"},
+			}},
+		}, {
+			MatrixID: "3",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/ppc64le"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}, {
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}},
+		}, {
+			MatrixID: "4",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}, {
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "flags",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
+			}, {
+				Name:  "context",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/go117/context"},
+			}},
+		}, {
+			MatrixID: "5",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"},
+			}, {
+				Name:  "version",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.18.1"},
+			}, {
+				Name:  "package",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"},
+			}, {
+				Name:  "flags",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
+			}}}, {
+			MatrixID: "6",
+			Params: []v1beta1.Param{{
+				Name:  "GOARCH",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "I-do-not-exist"},
+			}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotCombinations := FanOut(*tt.matrix)
+
+			gotEncodedCombinations, err := json.Marshal(gotCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			wantEncodedCombinations, err := json.Marshal(tt.wantCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+
+			sort.Slice(wantEncodedCombinations, func(i int, j int) bool { return wantEncodedCombinations[i] < wantEncodedCombinations[j] })
+			sort.Slice(gotEncodedCombinations, func(i int, j int) bool { return gotEncodedCombinations[i] < gotEncodedCombinations[j] })
+
+			if d := cmp.Diff(wantEncodedCombinations, gotEncodedCombinations); d != "" {
+				t.Errorf("Combinations of Parameters did not match the expected Combinations: %s", d)
+			}
+		})
+	}
+}

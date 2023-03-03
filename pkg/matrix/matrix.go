@@ -14,6 +14,8 @@ limitations under the License.
 package matrix
 
 import (
+	"fmt"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -23,7 +25,7 @@ func FanOut(matrix v1beta1.Matrix) Combinations {
 
 	// If Matrix Include params exists, generate explicit combinations
 	if matrix.MatrixHasInclude() && !matrix.MatrixHasParams() {
-			return combinations.fanOutMatrixIncludeParams(matrix)
+		return combinations.fanOutMatrixIncludeParams(matrix)
 	}
 
 	// Generate initial combinations with matrx.Params
@@ -34,9 +36,65 @@ func FanOut(matrix v1beta1.Matrix) Combinations {
 	// Matrix has Include and Params
 	// uses the combinations from above
 	if matrix.MatrixHasInclude() {
-		combinations = replaceIncludeMatrixParams(matrix, combinations)
+
+		// CREATE MAPS
+		mappedMatrixIncludeParamsSlice := mapMatrixIncludeParams(matrix.Include)
+		fmt.Println("mappedParamsSlice", mappedMatrixIncludeParamsSlice)
+
+		matrixParamNames := createSetMatrixParamName(matrix.Params)
+
+		fmt.Println("matrixParamNames", matrixParamNames)
+
+		// matrixParamsMap := mapMatrixParams(matrix.Params)
+		// fmt.Println("matrixParamsMap", matrixParamsMap)
+
+		// mappedCombinationsSlice := mapCombinations(combinations)
+		// fmt.Println("mappedCombinationsSlice", mappedCombinationsSlice)
+		// FILTER 3 works only for replaceCombinations not with appendMissingValues
+		combinations = replaceCombinations(mappedMatrixIncludeParamsSlice, combinations)
+		// combinations = appendMissingValues(mappedMatrixIncludeParamsSlice, combinations, matrixParamNames)
+
 	}
 
 	return combinations
 }
 
+// FILTER 3 WORKS!!!
+func replaceCombinations(mappedMatrixIncludeParamsSlice []map[string]string, combinations Combinations) Combinations {
+	var finalCombinations Combinations
+	// Filter out combinations and replace any missing values in combination params
+
+	// Filter out params to only include new params
+	combination := Filter(combinations, mappedMatrixIncludeParamsSlice)
+	fmt.Println("filtered", combination)
+	printCombinations(finalCombinations)
+	fmt.Println("REPLACING COMBINATIONS")
+	printCombinations(combinations)
+	return combinations
+}
+
+// Passing Common Package
+// MOVE INTO ELSE
+func appendMissingValues(mappedMatrixIncludeParamsSlice []map[string]string, combinations Combinations, matrixParamNames map[string]bool) Combinations {
+	for i := 0; i < len(mappedMatrixIncludeParamsSlice); i++ {
+		matrixIncludeParamMap := mappedMatrixIncludeParamsSlice[i]
+		printCombinations(combinations)
+
+		for name, val := range matrixIncludeParamMap {
+			// USE CASE I DO NOT EXIST
+			// handle the use case where the name does not exist and a new combo is appended to combinations
+			if !matrixParamNames[name] {
+				fmt.Println("match not found", name, val)
+				// Add new params at the current combination.MatrixID
+				for _, combination := range combinations {
+					fmt.Println("BEFORE APPENDING PARAMS:", combination.Params)
+					combination.Params = append(combination.Params, createNewStringParam(name, val))
+					fmt.Println("AFTER APPENDING PARAMS:", combination.Params)
+				}
+			}
+		}
+	}
+	fmt.Println("Generating New Combo")
+	printCombinations(combinations)
+	return combinations
+}
