@@ -42,24 +42,17 @@ func Test_FanOut(t *testing.T) {
 			}},
 		},
 		wantCombinations: Combinations{{
-			MatrixID: "0",
-			Params: []v1beta1.Param{{
 				Name:  "platform",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
-			}},
-		}, {
-			MatrixID: "1",
-			Params: []v1beta1.Param{{
+			}, {
 				Name:  "platform",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
-			}},
-		}, {
-			MatrixID: "2",
-			Params: []v1beta1.Param{{
+			},
+			{
 				Name:  "platform",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
-			}},
-		}},
+			},
+		},
 	}, {
 		name: "multiple arrays in matrix",
 		matrix: v1beta1.Matrix{
@@ -583,6 +576,10 @@ func Test_FanOut_FILTER3(t *testing.T) {
 						Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/amd64"}}, {
 						Name: "flags", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"}}, {
 						Name: "version", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"}}},
+				}, {
+					Name: "common-package",
+					Params: []v1beta1.Param{{
+						Name: "package", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "path/to/common/package/"}}},
 				},
 			},
 		},
@@ -594,6 +591,9 @@ func Test_FanOut_FILTER3(t *testing.T) {
 			}, {
 				Name:  "version",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
+			}, {
+				Name:  "flags",
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
 			}},
 		}, {
 			MatrixID: "1",
@@ -603,9 +603,6 @@ func Test_FanOut_FILTER3(t *testing.T) {
 			}, {
 				Name:  "version",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "go1.17"},
-			}, {
-				Name:  "flags",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"},
 			}},
 		}, {
 			MatrixID: "2",

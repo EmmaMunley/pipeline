@@ -21,17 +21,13 @@ import (
 	"k8s.io/utils/strings/slices"
 )
 
+type Params []v1beta1.Params
+
 // Combinations is a slice of combinations of Parameters from a Matrix.
-type Combinations []*Combination
+type Combinations []Params
 
 // Combination is a specific combination of Parameters from a Matrix.
-type Combination struct {
-	// MatrixID is an identification of a combination from Parameters in a Matrix.
-	MatrixID string
-
-	// Params is a specific combination of Parameters in a Matrix.
-	Params []v1beta1.Param
-}
+// type Combination []v1beta1.Param
 
 func (combinations Combinations) fanOut(param v1beta1.Param) Combinations {
 	if len(combinations) == 0 {
@@ -50,6 +46,14 @@ func (combinations Combinations) fanOutMatrixIncludeParams(matrix v1beta1.Matrix
 	}
 	return combinations
 }
+
+// func createCombination(name string, value string, combination Params) Params {
+// 	combination = append(combination, Param{
+// 		Name:  name,
+// 		Value: ParamValue{Type: ParamTypeString, StringVal: value},
+// 	})
+// 	return combination
+// }
 
 func createIncludeCombination(i int, parameters []v1beta1.Param) *Combination {
 	combination := &Combination{
@@ -191,23 +195,24 @@ func replaceIncludeMatrixParams(matrix v1beta1.Matrix, combinations Combinations
 					filteredCombination.Params = append(filteredCombination.Params, createNewStringParam(name, val))
 					fmt.Println("AFTER APPENDING PARAMS:", filteredCombination.Params)
 				}
-			} else {
-				// LOGIC WHEN NAME EXISTS BUT VALUE DOES NOT
-				// GENERATE NEW COMBINATION
-				name, val := paramValueNotFound(mappedMatrixIncludeParamsSlice, matrixParamsMap)
-				fmt.Println("paramValueNotFound", name, val)
-				combinationLen := len(finalCombinations)
-				if name != "" && val != "" {
-					new := createCombination(combinationLen, name, val, []v1beta1.Param{})
-					fmt.Println("BEDORE NEW COMBO")
-					printCombinations(finalCombinations)
-					fmt.Println("BEFORE LEN:", len(finalCombinations))
-					finalCombinations = append(finalCombinations, new)
-					fmt.Println("AFTER NEW COMBO")
-					printCombinations(finalCombinations)
-					fmt.Println("AFTER LEN:", len(finalCombinations))
-				}
 			}
+			// else {
+			// 	// LOGIC WHEN NAME EXISTS BUT VALUE DOES NOT
+			// 	// GENERATE NEW COMBINATION
+			// 	name, val := paramValueNotFound(mappedMatrixIncludeParamsSlice, matrixParamsMap)
+			// 	fmt.Println("paramValueNotFound", name, val)
+			// 	combinationLen := len(finalCombinations)
+			// 	if name != "" && val != "" {
+			// 		new := createCombination(combinationLen, name, val, []v1beta1.Param{})
+			// 		fmt.Println("BEDORE NEW COMBO")
+			// 		printCombinations(finalCombinations)
+			// 		fmt.Println("BEFORE LEN:", len(finalCombinations))
+			// 		finalCombinations = append(finalCombinations, new)
+			// 		fmt.Println("AFTER NEW COMBO")
+			// 		printCombinations(finalCombinations)
+			// 		fmt.Println("AFTER LEN:", len(finalCombinations))
+			// 	}
+			// }
 		}
 	}
 	printCombinations(finalCombinations)
@@ -231,16 +236,22 @@ func Filter(combinations Combinations, mappedMatrixIncludeParamsSlice []map[stri
 		for _, combination := range combinations {
 			// Check if all the values in combinationParams exist in includeParams
 			matchesAllValues := matchesAllValues(combination.Params, matrixIncludeParamMap)
-			filteredParams := removeDupsInParamMap(combination.Params, matrixIncludeParamMap)
-			fmt.Print("FILTERED PARAMS", filteredParams)
+
+			// fmt.Println("FILTERED PARAMS", filteredParams)
 			if matchesAllValues {
+				fmt.Print("MATCHES ALL VALUES")
+				// filteredParams := removeDupsInParamMap(combination.Params, matrixIncludeParamMap)
+				// fmt.Println("filteredParams", filteredParams)
 				filteredParams := removeDupsInParamMap(combination.Params, matrixIncludeParamMap)
-				fmt.Println("filteredParams", filteredParams)
 				for name, val := range filteredParams {
 					fmt.Println("BEFORE APPENDING PARAMS:", combination.Params)
 					combination.Params = append(combination.Params, createNewStringParam(name, val))
 					fmt.Println("AFTER APPENDING PARAMS:", combination.Params)
 				}
+			} else {
+				fmt.Println("DOES NOT MATCH ALL VALS")
+				fmt.Println("CombinationParams", combination.Params)
+				fmt.Println("paramMap:", matrixIncludeParamMap)
 			}
 		}
 		printCombinations(combinations)

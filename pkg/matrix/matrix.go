@@ -17,6 +17,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"k8s.io/utils/strings/slices"
 )
 
 // FanOut produces combinations of Parameters of type String from a slice of Parameters of type Array.
@@ -45,14 +46,14 @@ func FanOut(matrix v1beta1.Matrix) Combinations {
 
 		fmt.Println("matrixParamNames", matrixParamNames)
 
-		// matrixParamsMap := mapMatrixParams(matrix.Params)
-		// fmt.Println("matrixParamsMap", matrixParamsMap)
+		matrixParamsMap := mapMatrixParams(matrix.Params)
+		fmt.Println("matrixParamsMap", matrixParamsMap)
 
 		// mappedCombinationsSlice := mapCombinations(combinations)
 		// fmt.Println("mappedCombinationsSlice", mappedCombinationsSlice)
 		// FILTER 3 works only for replaceCombinations not with appendMissingValues
-		combinations = replaceCombinations(mappedMatrixIncludeParamsSlice, combinations)
-		// combinations = appendMissingValues(mappedMatrixIncludeParamsSlice, combinations, matrixParamNames)
+		combinations = replaceCombinations(mappedMatrixIncludeParamsSlice, combinations, matrixParamsMap)
+		combinations = appendMissingValues(mappedMatrixIncludeParamsSlice, combinations, matrixParamsMap)
 
 	}
 
@@ -60,7 +61,7 @@ func FanOut(matrix v1beta1.Matrix) Combinations {
 }
 
 // FILTER 3 WORKS!!!
-func replaceCombinations(mappedMatrixIncludeParamsSlice []map[string]string, combinations Combinations) Combinations {
+func replaceCombinations(mappedMatrixIncludeParamsSlice []map[string]string, combinations Combinations, matrixParamsMap map[string][]string) Combinations {
 	var finalCombinations Combinations
 	// Filter out combinations and replace any missing values in combination params
 
@@ -75,26 +76,36 @@ func replaceCombinations(mappedMatrixIncludeParamsSlice []map[string]string, com
 
 // Passing Common Package
 // MOVE INTO ELSE
-func appendMissingValues(mappedMatrixIncludeParamsSlice []map[string]string, combinations Combinations, matrixParamNames map[string]bool) Combinations {
-	for i := 0; i < len(mappedMatrixIncludeParamsSlice); i++ {
-		matrixIncludeParamMap := mappedMatrixIncludeParamsSlice[i]
-		printCombinations(combinations)
+func appendMissingValues(mappedMatrixIncludeParamsSlice []map[string]string, combinations Combinations, matrixParamsMap map[string][]string) Combinations {
+		// The parameter name has to be missing from all combinations
 
-		for name, val := range matrixIncludeParamMap {
-			// USE CASE I DO NOT EXIST
-			// handle the use case where the name does not exist and a new combo is appended to combinations
-			if !matrixParamNames[name] {
-				fmt.Println("match not found", name, val)
-				// Add new params at the current combination.MatrixID
-				for _, combination := range combinations {
-					fmt.Println("BEFORE APPENDING PARAMS:", combination.Params)
-					combination.Params = append(combination.Params, createNewStringParam(name, val))
-					fmt.Println("AFTER APPENDING PARAMS:", combination.Params)
-				}
-			}
+		// Add new params at the current combination.MatrixID
+		for _, combination := range combinations {
+			fmt.Println("BEFORE APPENDING PARAMS:", combination.Params)
+			// combination.Params = append(combination.Params, createNewStringParam(name, val))
+			fmt.Println("AFTER APPENDING PARAMS:", combination.Params)
 		}
-	}
-	fmt.Println("Generating New Combo")
+
 	printCombinations(combinations)
 	return combinations
+}
+
+
+// Passing Common Package
+// MOVE INTO ELSE
+func paramMissingFromAllCombinations(mappedMatrixIncludeParamsSlice []map[string]string, combinations Combinations) Combinations {
+	// The parameter name has to be missing from all combinations
+
+	// Add new params at the current combination.MatrixID
+	for _, combination := range combinations {
+		for _, matrixIncludeParamMap := range mappedMatrixIncludeParamsSlice {
+			for name, val := range matrixIncludeParamMap {
+		fmt.Println("BEFORE APPENDING PARAMS:", combination.Params)
+		// combination.Params = append(combination.Params, createNewStringParam(name, val))
+		fmt.Println("AFTER APPENDING PARAMS:", combination.Params)
+		}
+	}
+
+printCombinations(combinations)
+return combinations
 }
