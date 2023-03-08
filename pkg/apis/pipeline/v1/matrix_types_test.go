@@ -15,7 +15,6 @@ package v1
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 	"testing"
 
@@ -586,14 +585,12 @@ func TestMatrix_FanOut(t *testing.T) {
 				t.Error(err)
 			}
 
-			fmt.Println("GOT")
-			printCombinations(gotCombinations)
-			fmt.Println("WANT")
-			printCombinations(tt.wantCombinations)
 			sort.Slice(wantEncodedCombinations, func(i int, j int) bool { return wantEncodedCombinations[i] < wantEncodedCombinations[j] })
 			sort.Slice(gotEncodedCombinations, func(i int, j int) bool { return gotEncodedCombinations[i] < gotEncodedCombinations[j] })
 			if d := cmp.Diff(wantEncodedCombinations, gotEncodedCombinations); d != "" {
-				t.Errorf("Combinations of Parameters did not match the expected Combinations: %s", d)
+				t.Errorf("Combinations of Parameters did not match the expected Combinations:")
+				t.Error("Got combinations:", gotCombinations)
+				t.Error("Want combinations:", tt.wantCombinations)
 			}
 		})
 	}

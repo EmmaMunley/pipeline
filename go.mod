@@ -101,6 +101,7 @@ require (
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/theupdateframework/go-tuf v0.5.2 // indirect
 	github.com/zeebo/errs v1.3.0 // indirect
+	golang.org/x/exp v0.0.0-20230307190834-24139beb5833 // indirect
 )
 
 require (
