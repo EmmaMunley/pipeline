@@ -14,6 +14,8 @@ limitations under the License.
 package v1
 
 import (
+	"encoding/json"
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -141,8 +143,22 @@ func TestMatrix_FanOut(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if d := cmp.Diff(tt.want, tt.matrix.FanOut()); d != "" {
-				t.Errorf("Combinations of Parameters did not match the expected Params: %s", d)
+			gotCombinations := tt.matrix.FanOut()
+			gotEncodedCombinations, err := json.Marshal(gotCombinations)
+			if err != nil {
+				t.Error(err)
+			}
+			wantEncodedCombinations, err := json.Marshal(tt.want)
+			if err != nil {
+				t.Error(err)
+			}
+
+			sort.Slice(wantEncodedCombinations, func(i int, j int) bool { return wantEncodedCombinations[i] < wantEncodedCombinations[j] })
+			sort.Slice(gotEncodedCombinations, func(i int, j int) bool { return gotEncodedCombinations[i] < gotEncodedCombinations[j] })
+			if d := cmp.Diff(wantEncodedCombinations, gotEncodedCombinations); d != "" {
+				t.Errorf("Combinations of Parameters did not match the expected Combinations:")
+				t.Error("Got combinations:", gotCombinations)
+				t.Error("Want combinations:", tt.want)
 			}
 		})
 	}
