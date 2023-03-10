@@ -434,6 +434,62 @@ func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 	}
 }
 
+func TestValidateResolvedTask_InValidExtraParams(t *testing.T) {
+	ctx := context.Background()
+	task := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Image:   "myimage",
+				Command: []string{"mycmd"},
+			}},
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "bar",
+					Type: v1beta1.ParamTypeArray,
+				}, {
+					Name: "include",
+					Type: v1beta1.ParamTypeString,
+				},
+			},
+		},
+	}
+	rtr := &resources.ResolvedTask{
+		TaskSpec: &task.Spec,
+	}
+	p := v1beta1.Params{{
+		Name:  "bar",
+		Value: *v1beta1.NewStructuredValues("somethinggood"),
+	}}
+	m := &v1beta1.Matrix{
+		Include: []v1beta1.IncludeParams{{
+			Name: "build-1",
+			Params: v1beta1.Params{{
+				Name: "include", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "string-1"},
+			}},
+		}},
+	}
+	if err := ValidateResolvedTask(ctx, p, m, rtr); err == nil {
+		t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
+	}
+	t.Run("alpha-extra-params", func(t *testing.T) {
+		extra := v1beta1.Param{
+			Name:  "extrastr",
+			Value: *v1beta1.NewStructuredValues("extra"),
+		}
+		extraarray := v1beta1.Param{
+			Name:  "extraarray",
+			Value: *v1beta1.NewStructuredValues("i", "am", "an", "extra", "array", "param"),
+		}
+		for _, include := range m.Include {
+			include.Params = append(include.Params, extraarray)
+		}
+		if err := ValidateResolvedTask(ctx, append(p, extra), m, rtr); err == nil {
+			t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
+		}
+	})
+}
+
 func TestValidateOverrides(t *testing.T) {
 	tcs := []struct {
 		name    string

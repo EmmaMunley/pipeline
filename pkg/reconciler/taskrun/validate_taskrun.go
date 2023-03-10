@@ -40,7 +40,7 @@ func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params 
 	if missingParamsNames := missingParamsNames(neededParamsNames, providedParamsNames, paramSpecs); len(missingParamsNames) != 0 {
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
 	}
-	if wrongTypeParamNames := wrongTypeParamsNames(params, matrixParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
+	if wrongTypeParamNames := wrongTypeParamsNames(params, matrixAllParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
 	}
 	if missingKeysObjectParamNames := MissingKeysObjectParamNames(paramSpecs, params); len(missingKeysObjectParamNames) != 0 {
