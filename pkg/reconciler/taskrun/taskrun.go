@@ -374,11 +374,11 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1beta1.Matrix{}, rtr); err != nil {
-		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
-	}
+	// if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1beta1.Matrix{}, rtr); err != nil {
+	// 	logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
+	// 	tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+	// 	return nil, nil, controller.NewPermanentError(err)
+	// }
 
 	if err := rtr.TaskSpec.ValidateParamArrayIndex(ctx, tr.Spec.Params); err != nil {
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)

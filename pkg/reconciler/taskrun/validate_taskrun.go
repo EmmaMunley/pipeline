@@ -160,7 +160,9 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 // It also validates that all parameters have values, parameter types match the specified type and
 // object params have all the keys required
 func ValidateResolvedTask(ctx context.Context, params []v1beta1.Param, matrix *v1beta1.Matrix, rtr *resources.ResolvedTask) error {
-	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix.GetAllParams()); err != nil {
+	fmt.Println("MATRIX HAS PARAMS", matrix.Params)
+	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix.Params); err != nil {
+		fmt.Println(err)
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}
 	return nil

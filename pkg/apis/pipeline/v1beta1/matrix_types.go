@@ -200,6 +200,7 @@ func (m *Matrix) HasParams() bool {
 
 // GetAllParams returns a list of all Matrix Parameters
 func (m *Matrix) GetAllParams() Params {
+	fmt.Println("m.Params", m.Params)
 	var params Params
 	if m.HasParams() {
 		params = append(params, m.Params...)
