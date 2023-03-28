@@ -670,13 +670,17 @@ func (t *ResolvedPipelineTask) resolveTaskResources(
 	pipelineTask v1beta1.PipelineTask,
 	taskRun *v1beta1.TaskRun,
 ) error {
+
 	spec, taskName, kind, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
+	fmt.Println("spec?", spec)
 	if err != nil {
 		return err
 	}
 
 	spec.SetDefaults(ctx)
+	fmt.Println("spec after defaults?", spec)
 	rtr, err := resolvePipelineTaskResources(pipelineTask, &spec, taskName, kind)
+	fmt.Println("rtr?", rtr)
 	if err != nil {
 		return fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
 	}

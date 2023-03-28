@@ -20,7 +20,7 @@ kind: PipelineRun
 metadata:
   generateName: test-pr-
 spec:
-  serviceAccountName: "default"
+  serviceAccountName: 'default'
   pipelineSpec:
     tasks:
       - name: platforms-and-browsers

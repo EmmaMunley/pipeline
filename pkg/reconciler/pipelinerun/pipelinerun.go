@@ -358,6 +358,7 @@ func (c *Reconciler) resolvePipelineState(
 			getRunObjectFunc,
 			task,
 		)
+		fmt.Println("RESOLVEDTASK 1", resolvedTask)
 		if err != nil {
 			if tresources.IsGetTaskErrTransient(err) {
 				return nil, err
@@ -382,6 +383,7 @@ func (c *Reconciler) resolvePipelineState(
 			}
 			return nil, controller.NewPermanentError(err)
 		}
+		fmt.Println("RESOLVEDTASK 2", resolvedTask)
 		pst = append(pst, resolvedTask)
 	}
 	return pst, nil

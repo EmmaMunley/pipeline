@@ -54,6 +54,9 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 					Name: "arrayResultRef",
 					Type: v1beta1.ParamTypeArray,
 				}, {
+					Name: "empty",
+					Type: v1beta1.ParamTypeArray,
+				}, {
 					Name: "myObjWithoutDefault",
 					Type: v1beta1.ParamTypeObject,
 					Properties: map[string]v1beta1.PropertySpec{
@@ -110,12 +113,42 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 		Params: []v1beta1.Param{{
 			Name:  "zoo",
 			Value: *v1beta1.NewStructuredValues("a", "b", "c"),
-		}},
+		}, {
+			Name: "empty", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}},
+		},
+		},
 		Include: []v1beta1.IncludeParams{{
 			Name: "build-1",
 			Params: v1beta1.Params{{
 				Name: "include", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "string-1"},
 			}},
+		}},
+	}
+	if err := ValidateResolvedTask(ctx, p, m, rtr); err != nil {
+		t.Errorf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
+	}
+}
+
+func TestValidateResolvedTask_ValidParams_TEST(t *testing.T) {
+	ctx := context.Background()
+	task := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+		Spec: v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "empty",
+					Type: v1beta1.ParamTypeArray,
+				},
+			},
+		},
+	}
+	rtr := &resources.ResolvedTask{
+		TaskSpec: &task.Spec,
+	}
+	p := v1beta1.Params{{}}
+	m := &v1beta1.Matrix{
+		Params: []v1beta1.Param{{
+			Name: "empty", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}},
 		}},
 	}
 	if err := ValidateResolvedTask(ctx, p, m, rtr); err != nil {

@@ -40,7 +40,7 @@ func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params 
 	if missingParamsNames := missingParamsNames(neededParamsNames, providedParamsNames, paramSpecs); len(missingParamsNames) != 0 {
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
 	}
-	if wrongTypeParamNames := wrongTypeParamsNames(params, matrixAllParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
+	if wrongTypeParamNames := wrongTypeParamsNames(params, matrixParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
 	}
 	if missingKeysObjectParamNames := MissingKeysObjectParamNames(paramSpecs, params); len(missingKeysObjectParamNames) != 0 {
@@ -160,7 +160,10 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 // It also validates that all parameters have values, parameter types match the specified type and
 // object params have all the keys required
 func ValidateResolvedTask(ctx context.Context, params []v1beta1.Param, matrix *v1beta1.Matrix, rtr *resources.ResolvedTask) error {
-	fmt.Println("MATRIX HAS PARAMS", matrix.Params)
+	fmt.Println("MATRIX", matrix)
+	fmt.Println("MATRIX.PARAMS", matrix.Params)
+	fmt.Println("params", params)
+	fmt.Println("rtr.TaskSpec", rtr.TaskSpec)
 	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix.Params); err != nil {
 		fmt.Println(err)
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
