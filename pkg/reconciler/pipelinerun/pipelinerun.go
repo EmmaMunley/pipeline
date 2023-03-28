@@ -359,6 +359,7 @@ func (c *Reconciler) resolvePipelineState(
 			task,
 		)
 		fmt.Println("RESOLVEDTASK 1", resolvedTask)
+		fmt.Println("ERR 1", err)
 		if err != nil {
 			if tresources.IsGetTaskErrTransient(err) {
 				return nil, err
@@ -817,6 +818,8 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	defer span.End()
 	var taskRuns []*v1beta1.TaskRun
 	matrixCombinations := rpt.PipelineTask.Matrix.FanOut()
+	fmt.Println("MATRIX COMBOS", matrixCombinations)
+	fmt.Println("rpt.TaskRunNames ", rpt.TaskRunNames)
 	for i, taskRunName := range rpt.TaskRunNames {
 		params := matrixCombinations[i]
 		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr)

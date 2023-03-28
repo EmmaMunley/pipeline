@@ -621,8 +621,13 @@ func ResolvePipelineTask(
 			rpt.RunObject = run
 		}
 	case rpt.PipelineTask.IsMatrixed():
+		fmt.Println("LINE 624", rpt.PipelineTask)
+		fmt.Println("pipelineTask.Matrix.CountCombinations()", pipelineTask.Matrix.CountCombinations())
 		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())
+
+		fmt.Println("LINE 627", rpt.TaskRunNames)
 		for _, taskRunName := range rpt.TaskRunNames {
+			fmt.Println("LINE 629??, here")
 			if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, taskRunName, getTask, getTaskRun, pipelineTask); err != nil {
 				return nil, err
 			}
@@ -644,6 +649,10 @@ func (t *ResolvedPipelineTask) resolvePipelineRunTaskWithTaskRun(
 	pipelineTask v1beta1.PipelineTask,
 ) error {
 	taskRun, err := getTaskRun(taskRunName)
+
+	fmt.Println("resolvePipelineRunTaskWithTaskRun", taskRun)
+	fmt.Println("err", err)
+
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return fmt.Errorf("error retrieving TaskRun %s: %w", taskRunName, err)
@@ -651,7 +660,9 @@ func (t *ResolvedPipelineTask) resolvePipelineRunTaskWithTaskRun(
 	}
 	if taskRun != nil {
 		if t.PipelineTask.IsMatrixed() {
+			fmt.Println("HERE L659", taskRun)
 			t.TaskRuns = append(t.TaskRuns, taskRun)
+			fmt.Println("HERE L661", taskRun)
 		} else {
 			t.TaskRun = taskRun
 		}
@@ -754,20 +765,25 @@ func GetNamesOfTaskRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName
 
 func getTaskRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName string) []string {
 	var taskRunNames []string
+	fmt.Println("childRefs LN 676", childRefs)
 	for _, cr := range childRefs {
 		if cr.Kind == pipeline.TaskRunControllerName && cr.PipelineTaskName == ptName {
 			taskRunNames = append(taskRunNames, cr.Name)
 		}
 	}
+	fmt.Println("taskRunNames LN 773", taskRunNames)
 	return taskRunNames
 }
 
 func getNewTaskRunNames(ptName, prName string, combinationCount int) []string {
 	var taskRunNames []string
+	combinationCount = 3
+	fmt.Println("getNewTaskRunNames LN 780", combinationCount)
 	for i := 0; i < combinationCount; i++ {
 		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
 		taskRunNames = append(taskRunNames, taskRunName)
 	}
+	fmt.Println("taskRunNames LN 784", taskRunNames)
 	return taskRunNames
 }
 

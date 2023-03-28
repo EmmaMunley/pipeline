@@ -164,6 +164,12 @@ func ValidateResolvedTask(ctx context.Context, params []v1beta1.Param, matrix *v
 	fmt.Println("MATRIX.PARAMS", matrix.Params)
 	fmt.Println("params", params)
 	fmt.Println("rtr.TaskSpec", rtr.TaskSpec)
+	// if matrix combinations is 0, skip validation
+	count := matrix.CountCombinations()
+	fmt.Println("count", count)
+	if count == 0 {
+		return nil
+	}
 	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix.Params); err != nil {
 		fmt.Println(err)
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
