@@ -4550,7 +4550,9 @@ TaskKind
 </em>
 </td>
 <td>
-<p>TaskKind indicates the kind of the task, namespaced or cluster scoped.</p>
+<p>TaskKind indicates the Kind of the Task:
+1. Namespaced Task when Kind is set to &ldquo;Task&rdquo;. If Kind is &ldquo;&rdquo;, it defaults to &ldquo;Task&rdquo;.
+2. Custom Task when Kind is non-empty and APIVersion is non-empty</p>
 </td>
 </tr>
 <tr>
@@ -4562,7 +4564,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>API version of the referent</p>
+<p>API version of the referent
+Note: A Task with non-empty APIVersion and Kind is considered a Custom Task</p>
 </td>
 </tr>
 <tr>
@@ -12105,7 +12108,10 @@ TaskKind
 </em>
 </td>
 <td>
-<p>TaskKind indicates the kind of the task, namespaced or cluster scoped.</p>
+<p>TaskKind indicates the Kind of the Task:
+1. Namespaced Task when Kind is set to &ldquo;Task&rdquo;. If Kind is &ldquo;&rdquo;, it defaults to &ldquo;Task&rdquo;.
+2. Cluster-Scoped Task when Kind is set to &ldquo;ClusterTask&rdquo;
+3. Custom Task when Kind is non-empty and APIVersion is non-empty</p>
 </td>
 </tr>
 <tr>
@@ -12117,7 +12123,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>API version of the referent</p>
+<p>API version of the referent
+Note: A Task with non-empty APIVersion and Kind is considered a Custom Task</p>
 </td>
 </tr>
 <tr>
