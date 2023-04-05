@@ -54,6 +54,9 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 					Name: "include",
 					Type: v1beta1.ParamTypeString,
 				}, {
+					Name: "matrixArrayResultRef",
+					Type: v1beta1.ParamTypeArray,
+				}, {
 					Name: "arrayResultRef",
 					Type: v1beta1.ParamTypeArray,
 				}, {
@@ -127,6 +130,7 @@ func TestValidateResolvedTask_ValidParams(t *testing.T) {
 		t.Errorf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 	}
 }
+
 func TestValidateResolvedTask_ExtraValidParams(t *testing.T) {
 	ctx := context.Background()
 	tcs := []struct {

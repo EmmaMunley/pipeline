@@ -80,16 +80,7 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix v1beta1.Params, neededP
 	// It should be used to refer string and need to add [*] to refer to array or object.
 	var wrongTypeParamNames []string
 	for _, param := range params {
-		if _, ok := neededParamsTypes[param.Name]; !ok {
-			// Ignore any missing params - this happens when extra params were
-			// passed to the task that aren't being used.
-			continue
-		}
-		// This is needed to support array replacements in params. Users want to use $(tasks.taskName.results.resultname[*])
-		// to pass array result to array param, yet in yaml format this will be
-		// unmarshalled to string for ParamValues. So we need to check and skip this validation.
-		// Please refer issue #4879 for more details and examples.
-		if param.Value.Type == v1beta1.ParamTypeString && (neededParamsTypes[param.Name] == v1beta1.ParamTypeArray || neededParamsTypes[param.Name] == v1beta1.ParamTypeObject) && v1beta1.VariableSubstitutionRegex.MatchString(param.Value.StringVal) {
+		if shouldSkipValidation(param, neededParamsTypes) {
 			continue
 		}
 		if param.Value.Type != neededParamsTypes[param.Name] {
@@ -97,9 +88,7 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix v1beta1.Params, neededP
 		}
 	}
 	for _, param := range matrix {
-		if _, ok := neededParamsTypes[param.Name]; !ok {
-			// Ignore any missing params - this happens when extra params were
-			// passed to the task that aren't being used.
+		if shouldSkipValidation(param, neededParamsTypes) {
 			continue
 		}
 		// Matrix param replacements must be of type String
@@ -108,6 +97,23 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix v1beta1.Params, neededP
 		}
 	}
 	return wrongTypeParamNames
+}
+
+// shouldSkipValidation returns true when there are extra params passed to the task or if there are array
+// replacements in parameters
+func shouldSkipValidation(param v1beta1.Param, neededParamsTypes map[string]v1beta1.ParamType) bool {
+	// Ignore any missing params - this happens when extra params are passed to the task that aren't being used.
+	if _, ok := neededParamsTypes[param.Name]; !ok {
+		return true
+	}
+	// This is needed to support array replacements in params. Users want to use $(tasks.taskName.results.resultname[*])
+	// to pass array result to array param, yet in yaml format this will be
+	// unmarshalled to string for ParamValues. So we need to check and skip this validation.
+	// Please refer issue #4879 for more details and examples.
+	if param.Value.Type == v1beta1.ParamTypeString && (neededParamsTypes[param.Name] == v1beta1.ParamTypeArray || neededParamsTypes[param.Name] == v1beta1.ParamTypeObject) && (v1beta1.VariableSubstitutionRegex.MatchString(param.Value.StringVal)) {
+		return true
+	}
+	return false
 }
 
 // MissingKeysObjectParamNames checks if all required keys of object type param definitions are provided in params or param definitions' defaults.

@@ -3147,6 +3147,13 @@ func Test_validateMatrix(t *testing.T) {
 				Params: Params{{
 					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
 				}}},
+		}, {
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "c-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.c-result[*])"}},
+				}}},
 		}},
 	}}
 	for _, tt := range tests {
