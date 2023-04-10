@@ -486,6 +486,31 @@ func (t *ResolvedPipelineTask) skipBecauseEmptyArrayInMatrixParams() bool {
 	return false
 }
 
+// ResolvePipelineRunTaskWithTaskRun resolves a PipelineRun Task with a given TaskRun
+func (t *ResolvedPipelineTask) ResolvePipelineRunTaskWithTaskRun(
+	ctx context.Context,
+	taskRunName string,
+	getTask resources.GetTask,
+	getTaskRun resources.GetTaskRun,
+	pipelineTask v1beta1.PipelineTask,
+) error {
+	taskRun, err := getTaskRun(taskRunName)
+	if err != nil {
+		if !kerrors.IsNotFound(err) {
+			return fmt.Errorf("error retrieving TaskRun %s: %w", taskRunName, err)
+		}
+	}
+	if taskRun != nil {
+		if t.PipelineTask.IsMatrixed() {
+			t.TaskRuns = append(t.TaskRuns, taskRun)
+		} else {
+			t.TaskRun = taskRun
+		}
+	}
+
+	return t.resolveTaskResources(ctx, getTask, pipelineTask, taskRun)
+}
+
 // IsFinalTask returns true if a task is a finally task
 func (t *ResolvedPipelineTask) IsFinalTask(facts *PipelineRunFacts) bool {
 	return facts.isFinalTask(t.PipelineTask.Name)
@@ -599,6 +624,13 @@ func ResolvePipelineTask(
 		}
 		if run != nil {
 			rpt.RunObject = run
+		}
+		// If the matrix contains whole array results references [*], resolve task resources instead of
+		// getting the names of the TaskRuns since the number of combinations is non-deterministic
+		// until applying TaskResults to the matrix
+	case rpt.PipelineTask.IsMatrixed() && rpt.PipelineTask.Matrix.ContainsWholeArrayResultReferences():
+		if err := rpt.resolveTaskResources(ctx, getTask, pipelineTask, nil); err != nil {
+			return nil, err
 		}
 	case rpt.PipelineTask.IsMatrixed():
 		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())

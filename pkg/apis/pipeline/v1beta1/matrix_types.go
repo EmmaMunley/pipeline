@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"golang.org/x/exp/maps"
@@ -218,6 +217,24 @@ func (c Combination) sortCombination() ([]string, Combination) {
 	return order, sortedCombination
 }
 
+// ContainsWholeArrayResultReferences returns true if the matrix contains references to results
+func (m *Matrix) ContainsWholeArrayResultReferences() bool {
+	params := m.GetAllParams()
+	for _, param := range params {
+		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+
+		if ok && LooksLikeContainsResultRefs(expressions) {
+			for _, expression := range expressions {
+				_, stringIdx := ParseResultName(expression)
+				if stringIdx == "*" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 // CountCombinations returns the count of Combinations of Parameters generated from the Matrix in PipelineTask.
 func (m *Matrix) CountCombinations() int {
 	// Iterate over Matrix Parameters and compute count of all generated Combinations
@@ -345,24 +362,6 @@ func (m *Matrix) validateParameterInOneOfMatrixOrParams(params Params) (errs *ap
 	for _, param := range params {
 		if matrixParamNames.Has(param.Name) {
 			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
-		}
-	}
-	return errs
-}
-
-// validateNoWholeArrayResults() is used to ensure a matrix parameter does not contain result references
-// to entire arrays. This is temporary until whole array replacements for matrix paraemeters are supported.
-// See issue #6056 for more details
-func (m *Matrix) validateNoWholeArrayResults() (errs *apis.FieldError) {
-	if m.HasParams() {
-		for i, param := range m.Params {
-			val := param.Value.StringVal
-			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
-			if ok {
-				if LooksLikeContainsResultRefs(expressions) && strings.Contains(val, "[*]") {
-					errs = errs.Also(apis.ErrGeneric("matrix parameters cannot contain whole array result references", "").ViaFieldIndex("matrix.params", i))
-				}
-			}
 		}
 	}
 	return errs

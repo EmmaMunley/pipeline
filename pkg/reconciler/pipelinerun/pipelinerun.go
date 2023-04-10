@@ -706,24 +706,21 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "runNextSchedulableTask")
 	defer span.End()
-
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
-
 	// nextRpts holds a list of pipeline tasks which should be executed next
 	nextRpts, err := pipelineRunFacts.DAGExecutionQueue()
+
 	if err != nil {
 		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 		return controller.NewPermanentError(err)
 	}
-
 	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRpts)
 	if err != nil {
 		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
 		return controller.NewPermanentError(err)
 	}
-
 	resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
 	// After we apply Task Results, we may be able to evaluate more
 	// when expressions, so reset the skipped cache
@@ -771,7 +768,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
 			}
 		}()
-
 		switch {
 		case rpt.IsCustomTask() && rpt.PipelineTask.IsMatrixed():
 			rpt.RunObjects, err = c.createRunObjects(ctx, rpt, pr)
@@ -788,6 +784,10 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				return err
 			}
 		case rpt.PipelineTask.IsMatrixed():
+			// Get the names of the TaskRuns after whole array results replacements
+			if len(rpt.TaskRunNames) == 0 {
+				rpt.TaskRunNames = resources.GetNamesOfTaskRuns(pr.Status.ChildReferences, rpt.PipelineTask.Name, pr.Name, rpt.PipelineTask.Matrix.CountCombinations())
+			}
 			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
@@ -877,6 +877,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 	var pipelinePVCWorkspaceName string
 	var err error
+
 	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(ctx, pr, rpt)
 	if err != nil {
 		return nil, err

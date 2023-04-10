@@ -89,6 +89,7 @@ func ValidateObjectParamRequiredKeys(pipelineParameters []v1beta1.ParamSpec, pip
 // and Matrix.Include.Params after any replacements are made from Task parameters or results
 // Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
 func ValidateParameterTypesInMatrix(state PipelineRunState) error {
+	fmt.Println("ValidateParameterTypesInMatrix")
 	for _, rpt := range state {
 		m := rpt.PipelineTask.Matrix
 		if m.HasInclude() {
