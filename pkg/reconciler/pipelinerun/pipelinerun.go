@@ -579,6 +579,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	if pipelineRunFacts.State.IsBeforeFirstTaskRun() {
+		if err := resources.ValidateMatrixPipelineParameterTypes(pipelineRunFacts.State); err != nil {
+			logger.Errorf("Failed to validate matrix %q with error %v", pr.Name, err)
+			pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
+			return controller.NewPermanentError(err)
+		}
+
 		if err := resources.ValidatePipelineTaskResults(pipelineRunFacts.State); err != nil {
 			logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 			pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())

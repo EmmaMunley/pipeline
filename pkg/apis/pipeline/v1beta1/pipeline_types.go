@@ -233,6 +233,7 @@ func (pt *PipelineTask) IsMatrixed() bool {
 	return pt.Matrix.HasParams() || pt.Matrix.HasInclude()
 }
 
+>>>>>>> 7dedfc68e (Add support for using PipelineRun parameters as matrix parameter values)
 // TaskSpecMetadata returns the metadata of the PipelineTask's EmbeddedTask spec.
 func (pt *PipelineTask) TaskSpecMetadata() PipelineTaskMetadata {
 	return pt.TaskSpec.Metadata

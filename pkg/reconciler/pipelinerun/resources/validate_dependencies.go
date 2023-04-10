@@ -23,6 +23,32 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+// ValidateMatrixPipelineParameterTypes validates the type of Parameter for Matrix.Params
+// and Matrix.Include.Params after any replacements are made from Task parameters or results
+// Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
+func ValidateMatrixPipelineParameterTypes(state PipelineRunState) error {
+	for _, rpt := range state {
+		m := rpt.PipelineTask.Matrix
+		if m.HasInclude() {
+			for _, include := range m.Include {
+				for _, param := range include.Params {
+					if param.Value.Type != v1beta1.ParamTypeString {
+						return fmt.Errorf("parameters of type string only are allowed, but got param type %s", string(param.Value.Type))
+					}
+				}
+			}
+		}
+		if m.HasParams() {
+			for _, param := range m.Params {
+				if param.Value.Type != v1beta1.ParamTypeArray {
+					return fmt.Errorf("parameters of type array only are allowed, but got param type %s", string(param.Value.Type))
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // ValidatePipelineTaskResults ensures that any result references used by pipeline tasks
 // resolve to valid results. This prevents a situation where a PipelineTask references
 // a result in another PipelineTask that doesn't exist or where the user has either misspelled
