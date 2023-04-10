@@ -15,8 +15,8 @@ package v1beta1
 
 import (
 	"context"
-	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"golang.org/x/exp/maps"
@@ -300,34 +300,6 @@ func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.Fiel
 	return errs
 }
 
-// validateParams validates the type of Parameter for Matrix.Params and Matrix.Include.Params
-// Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
-// validateParams also validates Matrix.Params for a unique list of params
-// and a unique list of params in each Matrix.Include.Params specification
-func (m *Matrix) validateParams() (errs *apis.FieldError) {
-	if m != nil {
-		if m.HasInclude() {
-			for i, include := range m.Include {
-				errs = errs.Also(include.Params.validateDuplicateParameters().ViaField(fmt.Sprintf("matrix.include[%d].params", i)))
-				for _, param := range include.Params {
-					if param.Value.Type != ParamTypeString {
-						errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type string only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.include.params", param.Name))
-					}
-				}
-			}
-		}
-		if m.HasParams() {
-			errs = errs.Also(m.Params.validateDuplicateParameters().ViaField("matrix.params"))
-			for _, param := range m.Params {
-				if param.Value.Type != ParamTypeArray {
-					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("parameters of type array only are allowed, but got param type %s", string(param.Value.Type)), "").ViaFieldKey("matrix.params", param.Name))
-				}
-			}
-		}
-	}
-	return errs
-}
-
 // validatePipelineParametersVariablesInMatrixParameters validates all pipeline parameter variables including Matrix.Params and Matrix.Include.Params
 // that may contain the reference(s) to other params to make sure those references are used appropriately.
 func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
@@ -356,6 +328,18 @@ func (m *Matrix) validateParameterInOneOfMatrixOrParams(params Params) (errs *ap
 	for _, param := range params {
 		if matrixParamNames.Has(param.Name) {
 			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
+		}
+	}
+	return errs
+}
+
+func (m *Matrix) validateNoWholeArrayResults() (errs *apis.FieldError) {
+	if m.HasParams() {
+		for i, param := range m.Params {
+			val := param.Value.StringVal
+			if strings.Contains(val, "results") && strings.Contains(val, "[*]") {
+				errs = errs.Also(apis.ErrGeneric("matrix parameters cannot whole array result references", "").ViaFieldIndex("matrix.params", i))
+			}
 		}
 	}
 	return errs

@@ -317,3 +317,221 @@ func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
 		})
 	}
 }
+
+// ValidateMatrixPipelineParameterTypes tests that a pipeline task with
+// a matrix has the correct parameter types after any replacements are made
+func TestValidatePipelineParameterTypes(t *testing.T) {
+	for _, tc := range []struct {
+		desc     string
+		state    resources.PipelineRunState
+		wantErrs string
+	}{{
+		desc: "parameters in matrix are arrays",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+				},
+			},
+		}},
+	}, {
+		desc: "parameters in matrix are strings",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+					}, {
+						Name: "bar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "bar"},
+					}}},
+			},
+		}},
+		wantErrs: "parameters of type array only are allowed, but got param type string",
+	}, {
+		desc: "parameters in include matrix are strings",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Include: v1beta1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+						}, {
+							Name: "bar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "bar"}}},
+					}}},
+			},
+		}},
+	}, {
+		desc: "parameters in include matrix are arrays",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Include: v1beta1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						}, {
+							Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+					}}},
+			},
+		}},
+		wantErrs: "parameters of type string only are allowed, but got param type array",
+	}, {
+		desc: "parameters in include matrix are objects",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Include: v1beta1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeObject, ObjectVal: map[string]string{
+								"url":    "$(params.myObject.non-exist-key)",
+								"commit": "$(params.myString)",
+							}},
+						}, {
+							Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeObject, ObjectVal: map[string]string{
+								"url":    "$(params.myObject.non-exist-key)",
+								"commit": "$(params.myString)",
+							}},
+						}},
+					}}},
+			},
+		}},
+		wantErrs: "parameters of type string only are allowed, but got param type object",
+	}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			err := resources.ValidateParameterTypesInMatrix(tc.state)
+			if (err != nil) && err.Error() != tc.wantErrs {
+				t.Errorf("expected err: %s, but got err %s", tc.wantErrs, err)
+			}
+			if tc.wantErrs == "" && err != nil {
+				t.Errorf("got unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// TestValidateUniqueParamsInMatrix tests that a pipeline task does not have
+// any duplicate parameters
+func TestValidateUniqueParamsInMatrix(t *testing.T) {
+	for _, tc := range []struct {
+		desc     string
+		state    resources.PipelineRunState
+		wantErrs string
+	}{{
+		desc: "parameters are unique",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Params: v1beta1.Params{{
+					Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+				}},
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+				},
+			},
+		}},
+	}, {
+		desc: "parameter duplicated in pipelinetask",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Params: v1beta1.Params{{
+					Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+				}, {
+					Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+				}},
+			},
+		}},
+		wantErrs: "parameter names must be unique, the parameter duplicate is also defined at params[1].name",
+	}, {
+		desc: "parameter duplicated in matrix and pipelinetask",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Params: v1beta1.Params{{
+					Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+				}},
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name: "barfoo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+				},
+			},
+		}},
+		wantErrs: "parameter names must be unique, the parameter duplicate is also defined at matrix.params[0].name",
+	}, {
+		desc: "parameter duplicated in matrix",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Params: v1beta1.Params{{
+						Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+				},
+			},
+		}},
+		wantErrs: "parameter names must be unique, the parameter duplicate is also defined at matrix.params[1].name",
+	}, {
+		desc: "parameter duplicated in matrix include params",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Matrix: &v1beta1.Matrix{
+					Include: v1beta1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+						}, {
+							Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "bar"},
+						}}},
+					}},
+			},
+		}},
+		wantErrs: "parameter names must be unique, the parameter duplicate is also defined at matrix.include.params[0].name",
+	}, {
+		desc: "parameter duplicated in matrix include params and pipelinetask",
+		state: resources.PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "task",
+				Params: v1beta1.Params{{
+					Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+				}},
+				Matrix: &v1beta1.Matrix{
+					Include: v1beta1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1beta1.Params{{
+							Name: "duplicate", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "foo"},
+						}, {
+							Name: "foobar", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "bar"},
+						}}},
+					}},
+			},
+		}},
+		wantErrs: "parameter names must be unique, the parameter duplicate is also defined at matrix.include.params[0].name",
+	}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			err := resources.ValidateUniqueParamsInMatrix(tc.state)
+			if (err != nil) && err.Error() != tc.wantErrs {
+				t.Errorf("expected err: %s, but got err %s", tc.wantErrs, err)
+			}
+			if tc.wantErrs == "" && err != nil {
+				t.Errorf("got unexpected error: %v", err)
+			}
+		})
+	}
+}

@@ -597,130 +597,20 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		},
 		wantErrs: apis.ErrMultipleOneOf("matrix[duplicate]", "params[duplicate]"),
 	}, {
-		name: "duplicate parameters in matrix.params",
+		name: "parameters in matrix contain references to arrays",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}, {
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo-1", "bar-1"}},
-				}}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: `parameter names must be unique, the parameter "foobar" is also defined at`,
-			Paths:   []string{"matrix.params[1].name"},
-		},
-	}, {
-		name: "parameters unique in matrix and params",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
 			Params: Params{{
+				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}, {
 				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
-		},
-	}, {
-		name: "parameters in matrix are strings",
-		pt: &PipelineTask{
-			Name: "task",
 			Matrix: &Matrix{
 				Params: Params{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
+					Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foobar[*])"},
 				}, {
-					Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"},
+					Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.barfoo[*])"},
 				}}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: parameters of type array only are allowed, but got param type string",
-			Paths:   []string{"matrix.params[foo]", "matrix.params[bar]"},
-		},
-	}, {
-		name: "parameters in matrix are arrays",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}, {
-					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
-				}}},
-		},
-	}, {
-		name: "duplicate parameters in matrix.include.params",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Include: IncludeParamsList{{
-					Name: "invalid-include",
-					Params: Params{{
-						Name: "foobar", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
-					}, {
-						Name: "foobar", Value: ParamValue{Type: ParamTypeString, StringVal: "foo-1"},
-					}}},
-				}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: `parameter names must be unique, the parameter "foobar" is also defined at`,
-			Paths:   []string{"matrix.include[0].params[1].name"},
-		},
-	}, {
-		name: "parameters in include matrix are strings",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Include: IncludeParamsList{{
-					Name: "build-1",
-					Params: Params{{
-						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
-					}, {
-						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
-					}}},
-				}},
-		},
-	}, {
-		name: "parameters in include matrix are objects",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Include: IncludeParamsList{{
-					Name: "build-1",
-					Params: Params{{
-						Name: "barfoo", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
-							"url":    "$(params.myObject.non-exist-key)",
-							"commit": "$(params.myString)",
-						}},
-					}, {
-						Name: "foobar", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
-							"url":    "$(params.myObject.non-exist-key)",
-							"commit": "$(params.myString)",
-						}},
-					}},
-				}}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: parameters of type string only are allowed, but got param type object",
-			Paths:   []string{"matrix.include.params[barfoo]", "matrix.include.params[foobar]"},
-		},
-	}, {
-		name: "parameters in include matrix are arrays",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Include: IncludeParamsList{{
-					Name: "build-1",
-					Params: Params{{
-						Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-					}, {
-						Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
-				}}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: parameters of type string only are allowed, but got param type array",
-			Paths:   []string{"matrix.include.params[barfoo]", "matrix.include.params[foobar]"},
 		},
 	}, {
 		name: "parameters in matrix contain results references",
@@ -730,6 +620,19 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
 				}}},
+		},
+	}, {
+		name: "parameters in matrix contain whole array results references",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Params: Params{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo-task.results.[*])"},
+				}}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "matrix parameters cannot whole array result references",
+			Paths:   []string{"matrix.params[0]"},
 		},
 	}, {
 		name: "count of combinations of parameters in the matrix exceeds the maximum",
