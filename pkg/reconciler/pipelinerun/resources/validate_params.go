@@ -22,6 +22,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // ValidateParamTypesMatching validate that parameters in PipelineRun override corresponding parameters in Pipeline of the same type.
@@ -82,5 +83,61 @@ func ValidateObjectParamRequiredKeys(pipelineParameters []v1beta1.ParamSpec, pip
 		return fmt.Errorf("PipelineRun missing object keys for parameters: %v", missings)
 	}
 
+	return nil
+}
+
+// ValidateParameterTypesInMatrix validates the type of Parameter for Matrix.Params
+// and Matrix.Include.Params after any replacements are made from Task parameters or results
+// Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
+func ValidateParameterTypesInMatrix(state PipelineRunState) error {
+	for _, rpt := range state {
+		m := rpt.PipelineTask.Matrix
+		if m.HasInclude() {
+			for _, include := range m.Include {
+				for _, param := range include.Params {
+					if param.Value.Type != v1beta1.ParamTypeString {
+						return fmt.Errorf("parameters of type string only are allowed, but got param type %s", string(param.Value.Type))
+					}
+				}
+			}
+		}
+		if m.HasParams() {
+			for _, param := range m.Params {
+				if param.Value.Type != v1beta1.ParamTypeArray {
+					return fmt.Errorf("parameters of type array only are allowed, but got param type %s", string(param.Value.Type))
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateUniqueParamsInMatrix validates there are no duplicate parameters
+// within Matrix.Params or Matrix.Include Params
+func ValidateUniqueParamsInMatrix(state PipelineRunState) error {
+	taskParamNames := sets.NewString()
+	for _, rpt := range state {
+		matrix := rpt.PipelineTask.Matrix
+		params := rpt.PipelineTask.Params
+		for _, param := range params {
+			taskParamNames.Insert(param.Name)
+		}
+		if matrix != nil {
+			for _, include := range matrix.Include {
+				for i, param := range include.Params {
+					if taskParamNames.Has(param.Name) {
+						return fmt.Errorf(fmt.Sprintf("parameter names must be unique, the parameter %s is also defined at matrix.include.params[%d].name", param.Name, i))
+					}
+					taskParamNames.Insert(include.Name)
+				}
+			}
+			for i, param := range matrix.Params {
+				if taskParamNames.Has(param.Name) {
+					return fmt.Errorf(fmt.Sprintf("parameter names must be unique, the parameter %s is also defined at matrix.params[%d].name", param.Name, i))
+				}
+				taskParamNames.Insert(param.Name)
+			}
+		}
+	}
 	return nil
 }
