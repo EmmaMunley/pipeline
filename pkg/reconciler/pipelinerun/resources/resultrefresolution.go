@@ -53,6 +53,13 @@ func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunSta
 		if err != nil {
 			return nil, pt, err
 		}
+		fmt.Println("resolved ref?", resolvedResultRefs)
+		// arrayReplacements := resolvedResultRefs.getArrayReplacements()
+		// fmt.Println("arrayReplacements?", arrayReplacements)
+		// fmt.Println("BEFORE pipelineRunState?", pipelineRunState)
+		// ApplyTaskResults(PipelineRunState{target}, resolvedResultRefs)
+		ApplyTaskResults(pipelineRunState, resolvedResultRefs)
+		fmt.Println("AFTER pipelineRunState?", pipelineRunState)
 		allResolvedResultRefs = append(allResolvedResultRefs, resolvedResultRefs...)
 	}
 	return validateArrayResultsIndex(removeDup(allResolvedResultRefs))

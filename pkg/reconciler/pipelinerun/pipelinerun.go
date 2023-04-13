@@ -713,22 +713,30 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
-
 	// nextRpts holds a list of pipeline tasks which should be executed next
 	nextRpts, err := pipelineRunFacts.DAGExecutionQueue()
+
 	if err != nil {
 		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 		return controller.NewPermanentError(err)
 	}
-
 	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRpts)
+
+	fmt.Println("resolvedResultRefs", resolvedResultRefs)
 	if err != nil {
 		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
 		return controller.NewPermanentError(err)
 	}
+	// fmt.Println("pr.Status.PipelineResults", pr.Status.PipelineResults)
+	// resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
+	// fmt.Println("pr.Spec.PipelineSpec.Results", pr.Spec.PipelineSpec.Results)
+	fmt.Println("pipelineRunFacts.State.GetTaskRunsResults()", pipelineRunFacts.State.GetTaskRunsResults())
+	// fmt.Println("pipelineRunFacts.State.GetRunsResults()", pipelineRunFacts.State.GetRunsResults())
 
-	resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
+	// pr.Status.PipelineResults, err = resources.ApplyTaskResultsToPipelineResults(ctx, pr.Spec.PipelineSpec.Results,
+	// 	pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), pr.Status.SkippedTasks)
+	// fmt.Println("AFTER pr.Status.PipelineResults", pr.Status.PipelineResults)
 	// After we apply Task Results, we may be able to evaluate more
 	// when expressions, so reset the skipped cache
 	pipelineRunFacts.ResetSkippedCache()

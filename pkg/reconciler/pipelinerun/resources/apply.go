@@ -178,15 +178,18 @@ func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
 func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResultRefs) {
 	stringReplacements := resolvedResultRefs.getStringReplacements()
 	arrayReplacements := resolvedResultRefs.getArrayReplacements()
+	fmt.Println(" ApplyTaskResults arrayReplacements", arrayReplacements)
 	objectReplacements := resolvedResultRefs.getObjectReplacements()
 	for _, resolvedPipelineRunTask := range targets {
 		if resolvedPipelineRunTask.PipelineTask != nil {
+			fmt.Println("before Params", resolvedPipelineRunTask.PipelineTask.Params)
+			fmt.Println("before Matrix", resolvedPipelineRunTask.PipelineTask.Matrix)
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, objectReplacements)
 			if pipelineTask.IsMatrixed() {
 				// Only string replacements from string, array or object results are supported
 				// We plan to support array replacements from array results soon (#5925)
-				pipelineTask.Matrix.Params = replaceParamValues(pipelineTask.Matrix.Params, stringReplacements, nil, nil)
+				pipelineTask.Matrix.Params = replaceParamValues(pipelineTask.Matrix.Params, stringReplacements, arrayReplacements, nil)
 				for i := range pipelineTask.Matrix.Include {
 					// matrix include parameters can only be type string
 					pipelineTask.Matrix.Include[i].Params = replaceParamValues(pipelineTask.Matrix.Include[i].Params, stringReplacements, nil, nil)
@@ -196,6 +199,8 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
 				pipelineTask.TaskRef.Params = replaceParamValues(pipelineTask.TaskRef.Params, stringReplacements, arrayReplacements, objectReplacements)
 			}
+			fmt.Println(" after resolvedPipelineRunTask.PipelineTask Params", resolvedPipelineRunTask.PipelineTask.Params)
+			fmt.Println(" after resolvedPipelineRunTask.PipelineTask Matrix", resolvedPipelineRunTask.PipelineTask.Matrix)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
