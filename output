@@ -4638,3 +4638,5 @@ FAIL
 Using kubeconfig at `` with cluster ``
 FAIL	github.com/tektoncd/pipeline/test	78.645s
 FAIL
+FAIL	github.com/tektoncd/pipeline/test [setup failed]
+FAIL
