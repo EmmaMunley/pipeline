@@ -46,7 +46,7 @@ func TestPipelineRunMatrixed(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
+	fmt.Println("TEST")
 	c, namespace := setup(ctx, t, requireAnyGate(alphaFeatureFlags))
 	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
 	defer tearDown(context.Background(), t, c, namespace)
