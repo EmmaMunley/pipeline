@@ -597,51 +597,6 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		},
 		wantErrs: apis.ErrMultipleOneOf("matrix[duplicate]", "params[duplicate]"),
 	}, {
-		name: "duplicate parameters in matrix.params",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}, {
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo-1", "bar-1"}},
-				}}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: `parameter names must be unique, the parameter "foobar" is also defined at`,
-			Paths:   []string{"matrix.params[1].name"},
-		},
-	}, {
-		name: "parameters unique in matrix and params",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: Params{{
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-			Params: Params{{
-				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
-			}},
-		},
-	}, {
-		name: "duplicate parameters in matrix.include.params",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Include: IncludeParamsList{{
-					Name: "invalid-include",
-					Params: Params{{
-						Name: "foobar", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
-					}, {
-						Name: "foobar", Value: ParamValue{Type: ParamTypeString, StringVal: "foo-1"},
-					}}},
-				}},
-		},
-		wantErrs: &apis.FieldError{
-			Message: `parameter names must be unique, the parameter "foobar" is also defined at`,
-			Paths:   []string{"matrix.include[0].params[1].name"},
-		},
-	}, {
 		name: "parameters in matrix contain references to arrays",
 		pt: &PipelineTask{
 			Name: "task",
@@ -674,6 +629,10 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 				Params: Params{{
 					Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo-task.results.[*])"},
 				}}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "matrix parameters cannot whole array result references",
+			Paths:   []string{"matrix.params[0]"},
 		},
 	}, {
 		name: "count of combinations of parameters in the matrix exceeds the maximum",

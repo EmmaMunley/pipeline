@@ -6598,6 +6598,99 @@ spec:
 	}
 }
 
+func TestReconcile_ParamsValidationsImmediatelyFailPipelineRun(t *testing.T) {
+	names.TestingSeed()
+
+	ctx := context.Background()
+	cfg := config.NewStore(logtesting.TestLogger(t))
+	ctx = cfg.ToContext(ctx)
+
+	prs := []*v1beta1.PipelineRun{
+		parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: pipelinerun-matrix-param-invalid-type
+  namespace: foo
+spec:
+  pipelineSpec:
+   tasks:
+    - name: mytask
+      taskSpec:
+        steps:
+         - name: echo
+           image: alpine
+           script: |
+             echo "test"
+    - name: platforms-and-browsers
+      taskRef:
+        name: mytask
+      matrix:
+        params:
+          - name: platform
+            value: linux
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
+      params:
+        - name: version
+          value: v0.33.0
+`),
+		parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: pipelinerun-matrix-param-duplicates
+  namespace: foo
+spec:
+  pipelineSpec:
+   tasks:
+    - name: mytask
+      matrix:
+        params:
+          - name: browser
+            value:
+              - chrome
+          - name: browser
+            value:
+              - safari
+              - firefox
+      taskSpec:
+        steps:
+         - name: echo
+           image: alpine
+           script: |
+             echo "test"
+`),
+	}
+
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	d := test.Data{
+		PipelineRuns: prs,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	run1, _ := prt.reconcileRun("foo", "pipelinerun-matrix-param-invalid-type", nil, true)
+	run2, _ := prt.reconcileRun("foo", "pipelinerun-matrix-param-duplicates", nil, true)
+
+	cond1 := run1.Status.GetCondition(apis.ConditionSucceeded)
+	cond2 := run2.Status.GetCondition(apis.ConditionSucceeded)
+
+	for _, c := range []*apis.Condition{cond1, cond2} {
+		if c.Status != corev1.ConditionFalse {
+			t.Errorf("expected Succeeded/False condition but saw: %v", c)
+		}
+	}
+
+	if cond1.Reason != ReasonInvalidMatrixParameterTypes {
+		t.Errorf("expected invalid matrix parameter types condition but saw: %v", cond1)
+	}
+
+	if cond2.Reason != ReasonDuplicateParams {
+		t.Errorf("expected invalid duplicate parameters condition but saw: %v", cond2)
+	}
+}
+
 // TestReconcileWithResolver checks that a PipelineRun with a populated Resolver
 // field creates a ResolutionRequest object for that Resolver's type, and
 // that when the request is successfully resolved the PipelineRun begins running.

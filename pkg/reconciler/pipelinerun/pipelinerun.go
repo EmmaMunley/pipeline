@@ -113,6 +113,10 @@ const (
 	// ReasonCouldntTimeOut indicates that a PipelineRun was timed out but attempting to update
 	// all of the running TaskRuns as timed out failed.
 	ReasonCouldntTimeOut = "PipelineRunCouldntTimeOut"
+	// ReasonDuplicateParams indicates a PipelineRun contains duplicate parameter types
+	ReasonDuplicateParams = "ReasonDuplicateParams"
+	// ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types
+	ReasonInvalidMatrixParameterTypes = "ReasonInvalidMatrixParameterTypes"
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
 	ReasonInvalidTaskResultReference = "InvalidTaskResultReference"
@@ -579,9 +583,15 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	if pipelineRunFacts.State.IsBeforeFirstTaskRun() {
-		if err := resources.ValidateMatrixPipelineParameterTypes(pipelineRunFacts.State); err != nil {
+		if err := resources.ValidateParameterTypesInMatrix(pipelineRunFacts.State); err != nil {
 			logger.Errorf("Failed to validate matrix %q with error %v", pr.Name, err)
-			pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
+			pr.Status.MarkFailed(ReasonInvalidMatrixParameterTypes, err.Error())
+			return controller.NewPermanentError(err)
+		}
+
+		if err := resources.ValidateUniqueParamsInMatrix(pipelineRunFacts.State); err != nil {
+			logger.Errorf("Failed to validate matrix %q with error %v", pr.Name, err)
+			pr.Status.MarkFailed(ReasonDuplicateParams, err.Error())
 			return controller.NewPermanentError(err)
 		}
 

@@ -15,8 +15,8 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"golang.org/x/exp/maps"
@@ -300,22 +300,6 @@ func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.Fiel
 	return errs
 }
 
-// validateUniqueParams validates Matrix.Params for a unique list of params
-// and a unique list of params in each Matrix.Include.Params specification
-func (m *Matrix) validateUniqueParams() (errs *apis.FieldError) {
-	if m != nil {
-		if m.HasInclude() {
-			for i, include := range m.Include {
-				errs = errs.Also(include.Params.validateDuplicateParameters().ViaField(fmt.Sprintf("matrix.include[%d].params", i)))
-			}
-		}
-		if m.HasParams() {
-			errs = errs.Also(m.Params.validateDuplicateParameters().ViaField("matrix.params"))
-		}
-	}
-	return errs
-}
-
 // validatePipelineParametersVariablesInMatrixParameters validates all pipeline parameter variables including Matrix.Params and Matrix.Include.Params
 // that may contain the reference(s) to other params to make sure those references are used appropriately.
 func (m *Matrix) validatePipelineParametersVariablesInMatrixParameters(prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
@@ -344,6 +328,18 @@ func (m *Matrix) validateParameterInOneOfMatrixOrParams(params []Param) (errs *a
 	for _, param := range params {
 		if matrixParamNames.Has(param.Name) {
 			errs = errs.Also(apis.ErrMultipleOneOf("matrix["+param.Name+"]", "params["+param.Name+"]"))
+		}
+	}
+	return errs
+}
+
+func (m *Matrix) validateNoWholeArrayResults() (errs *apis.FieldError) {
+	if m.HasParams() {
+		for i, param := range m.Params {
+			val := param.Value.StringVal
+			if strings.Contains(val, "results") && strings.Contains(val, "[*]") {
+				errs = errs.Also(apis.ErrGeneric("matrix parameters cannot whole array result references", "").ViaFieldIndex("matrix.params", i))
+			}
 		}
 	}
 	return errs

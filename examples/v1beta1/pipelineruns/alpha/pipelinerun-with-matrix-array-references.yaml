@@ -8,9 +8,9 @@ metadata:
 spec:
   params:
     - name: platform
-      default: ''
+      default: ""
     - name: browser
-      default: ''
+      default: ""
   steps:
     - name: echo
       image: alpine
@@ -22,7 +22,7 @@ kind: PipelineRun
 metadata:
   generateName: matrixed-pr-
 spec:
-  serviceAccountName: 'default'
+  serviceAccountName: "default"
   params:
     - name: platforms
       value:
@@ -49,6 +49,16 @@ spec:
       type: array
   tasks:
     - name: platforms-and-browsers
+      matrix:
+        params:
+          - name: platform
+            value: $(params.platforms[*])
+          - name: browser
+            value: $(params.browsers[*])
+      taskRef:
+        name: platform-browsers
+  finally:
+    - name: platforms-and-browsers-in-finally
       matrix:
         params:
           - name: platform
