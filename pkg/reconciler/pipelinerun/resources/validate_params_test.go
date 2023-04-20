@@ -502,7 +502,7 @@ func TestValidateUniqueParamsInMatrix(t *testing.T) {
 					}},
 			},
 		}},
-		wantErrs: "parameter names must be unique, the parameter duplicate is also defined at matrix.include.params[0].name",
+		wantErrs: "parameter names must be unique, the parameter duplicate is also defined at matrix.include.params[1].name",
 	}, {
 		desc: "parameter duplicated in matrix include params and pipelinetask",
 		state: resources.PipelineRunState{{

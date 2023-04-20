@@ -115,29 +115,29 @@ func ValidateParameterTypesInMatrix(state PipelineRunState) error {
 // ValidateUniqueParamsInMatrix validates there are no duplicate parameters
 // within Matrix.Params or Matrix.Include Params
 func ValidateUniqueParamsInMatrix(state PipelineRunState) error {
-	taskParamNames := sets.NewString()
+	var errs error
 	for _, rpt := range state {
-		matrix := rpt.PipelineTask.Matrix
-		params := rpt.PipelineTask.Params
-		for _, param := range params {
-			taskParamNames.Insert(param.Name)
+		m := rpt.PipelineTask.Matrix
+		if m.HasInclude() {
+			for _, include := range m.Include {
+				errs = validateDuplicateParameters(include.Params, "matrix.include.params")
+			}
 		}
-		if matrix != nil {
-			for _, include := range matrix.Include {
-				for i, param := range include.Params {
-					if taskParamNames.Has(param.Name) {
-						return fmt.Errorf(fmt.Sprintf("parameter names must be unique, the parameter %s is also defined at matrix.include.params[%d].name", param.Name, i))
-					}
-					taskParamNames.Insert(include.Name)
-				}
-			}
-			for i, param := range matrix.Params {
-				if taskParamNames.Has(param.Name) {
-					return fmt.Errorf(fmt.Sprintf("parameter names must be unique, the parameter %s is also defined at matrix.params[%d].name", param.Name, i))
-				}
-				taskParamNames.Insert(param.Name)
-			}
+		if m.HasParams() {
+			errs = validateDuplicateParameters(m.Params, "matrix.params")
 		}
 	}
-	return nil
+	return errs
+}
+
+// validateDuplicateParameters checks if a parameter with the same name is defined more than once
+func validateDuplicateParameters(ps v1beta1.Params, typeParam string) (errs error) {
+	taskParamNames := sets.NewString()
+	for i, param := range ps {
+		if taskParamNames.Has(param.Name) {
+			errs = fmt.Errorf(fmt.Sprintf("parameter names must be unique, the parameter %s is also defined at %s[%d].name", param.Name, typeParam, i))
+		}
+		taskParamNames.Insert(param.Name)
+	}
+	return errs
 }
