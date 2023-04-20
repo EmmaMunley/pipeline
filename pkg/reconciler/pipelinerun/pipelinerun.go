@@ -710,7 +710,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "runNextSchedulableTask")
 	defer span.End()
-
+	fmt.Println("!!TEST!! runNextSchedulableTask")
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 	// nextRpts holds a list of pipeline tasks which should be executed next
@@ -728,15 +728,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
 		return controller.NewPermanentError(err)
 	}
-	// fmt.Println("pr.Status.PipelineResults", pr.Status.PipelineResults)
-	// resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
-	// fmt.Println("pr.Spec.PipelineSpec.Results", pr.Spec.PipelineSpec.Results)
-	fmt.Println("pipelineRunFacts.State.GetTaskRunsResults()", pipelineRunFacts.State.GetTaskRunsResults())
-	// fmt.Println("pipelineRunFacts.State.GetRunsResults()", pipelineRunFacts.State.GetRunsResults())
 
-	// pr.Status.PipelineResults, err = resources.ApplyTaskResultsToPipelineResults(ctx, pr.Spec.PipelineSpec.Results,
-	// 	pipelineRunFacts.State.GetTaskRunsResults(), pipelineRunFacts.State.GetRunsResults(), pr.Status.SkippedTasks)
-	// fmt.Println("AFTER pr.Status.PipelineResults", pr.Status.PipelineResults)
 	// After we apply Task Results, we may be able to evaluate more
 	// when expressions, so reset the skipped cache
 	pipelineRunFacts.ResetSkippedCache()
@@ -761,6 +753,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	}
 
 	for _, rpt := range nextRpts {
+		fmt.Println("!!TEST!! rpt", rpt)
 		if rpt.IsFinalTask(pipelineRunFacts) {
 			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
 		}
@@ -774,8 +767,10 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
 			}
 		}()
-
+		fmt.Println("rpt.PipelineTask", rpt.PipelineTask)
+		fmt.Println("rpt.PipelineTask.Matrix", rpt.PipelineTask.Matrix)
 		switch {
+
 		case rpt.IsCustomTask() && rpt.PipelineTask.IsMatrixed():
 			rpt.RunObjects, err = c.createRunObjects(ctx, rpt, pr)
 			if err != nil {
@@ -791,6 +786,28 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				return err
 			}
 		case rpt.PipelineTask.IsMatrixed():
+			fmt.Println("!!TEST!! pt.PipelineTask.IsMatrixed()")
+			fmt.Println("rpt.PipelineTask.Matrix", rpt.PipelineTask.Matrix)
+			fmt.Println("rpt.PipelineTask.CountCombinations", rpt.PipelineTask.Matrix.CountCombinations())
+			rpt.TaskRunNames = GetNamesOfTaskRuns(pr.Status.ChildReferences, rpt.TaskRunName, pr.Name, rpt.PipelineTask.Matrix.CountCombinations())
+			fmt.Println("TASKRUNNAMES", rpt.TaskRunNames)
+
+			// getTask := func(ctx context.Context, n string) (*v1beta1.Task, *v1beta1.RefSource, error) {
+			// 	return &v1beta1.Task{
+			// 		ObjectMeta: rpt.TaskRun.ObjectMeta,
+			// 		Spec:       *rpt.ResolvedTask.TaskSpec,
+			// 	}, pr.DeepCopy().Status.Provenance.RefSource, nil
+			// }
+
+			// getTaskRun := func(string) (*v1beta1.TaskRun, error) {
+			// 	return
+			// }
+
+			// for _, taskRunName := range rpt.TaskRunNames {
+			// 	if err := rpt.ResolvePipelineRunTaskWithTaskRun(ctx, taskRunName, getTask, getTaskRun, *rpt.PipelineTask); err != nil {
+			// 		return err
+			// 	}
+			// }
 			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
@@ -807,6 +824,33 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}
 	}
 	return nil
+}
+
+// GetNamesOfTaskRuns should return unique names for `TaskRuns` if one has not already been defined, and the existing one otherwise.
+func GetNamesOfTaskRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, combinationCount int) []string {
+	if taskRunNames := getTaskRunNamesFromChildRefs(childRefs, ptName); taskRunNames != nil {
+		return taskRunNames
+	}
+	return getNewTaskRunNames(ptName, prName, combinationCount)
+}
+
+func getTaskRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName string) []string {
+	var taskRunNames []string
+	for _, cr := range childRefs {
+		if cr.Kind == pipeline.TaskRunControllerName && cr.PipelineTaskName == ptName {
+			taskRunNames = append(taskRunNames, cr.Name)
+		}
+	}
+	return taskRunNames
+}
+
+func getNewTaskRunNames(ptName, prName string, combinationCount int) []string {
+	var taskRunNames []string
+	for i := 0; i < combinationCount; i++ {
+		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
+		taskRunNames = append(taskRunNames, taskRunName)
+	}
+	return taskRunNames
 }
 
 // setFinallyStartedTimeIfNeeded sets the PipelineRun.Status.FinallyStartedTime to the current time if it's nil.

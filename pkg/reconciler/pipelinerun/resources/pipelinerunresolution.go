@@ -486,6 +486,31 @@ func (t *ResolvedPipelineTask) skipBecauseEmptyArrayInMatrixParams() bool {
 	return false
 }
 
+// ResolvePipelineRunTaskWithTaskRun resolves a PipelineRun Task with a given TaskRun
+func (t *ResolvedPipelineTask) ResolvePipelineRunTaskWithTaskRun(
+	ctx context.Context,
+	taskRunName string,
+	getTask resources.GetTask,
+	getTaskRun resources.GetTaskRun,
+	pipelineTask v1beta1.PipelineTask,
+) error {
+	taskRun, err := getTaskRun(taskRunName)
+	if err != nil {
+		if !kerrors.IsNotFound(err) {
+			return fmt.Errorf("error retrieving TaskRun %s: %w", taskRunName, err)
+		}
+	}
+	if taskRun != nil {
+		if t.PipelineTask.IsMatrixed() {
+			t.TaskRuns = append(t.TaskRuns, taskRun)
+		} else {
+			t.TaskRun = taskRun
+		}
+	}
+
+	return t.resolveTaskResources(ctx, getTask, pipelineTask, taskRun)
+}
+
 // IsFinalTask returns true if a task is a finally task
 func (t *ResolvedPipelineTask) IsFinalTask(facts *PipelineRunFacts) bool {
 	return facts.isFinalTask(t.PipelineTask.Name)
@@ -601,6 +626,9 @@ func ResolvePipelineTask(
 			rpt.RunObject = run
 		}
 	case rpt.PipelineTask.IsMatrixed():
+		fmt.Println("SKIPPING ResolvePipelineTask")
+		// fmt.Println("getTask", getTask)
+		// fmt.Println("getRun", getRun)
 		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.Matrix.CountCombinations())
 		for _, taskRunName := range rpt.TaskRunNames {
 			if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, taskRunName, getTask, getTaskRun, pipelineTask); err != nil {
