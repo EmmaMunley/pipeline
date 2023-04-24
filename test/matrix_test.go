@@ -22,14 +22,18 @@ package test
 import (
 	"context"
 	"fmt"
-	"strings"
-	"testing"
-
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
+	"strings"
+	"testing"
 )
 
 var (
@@ -37,6 +41,10 @@ var (
 		// Make sure this is running under alpha integration tests
 		"enable-api-fields": "alpha",
 	}
+	ignoreResourceVersion = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
+	ignoreTypeMeta        = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
+	ignoreTimeout          = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "Timeout")
+	trueb = true
 )
 
 // TestPipelineRunMatrixed is an integration test that will
@@ -53,7 +61,7 @@ func TestPipelineRunMatrixed(t *testing.T) {
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
-  name: %s
+  name: mytask
   namespace: %s
 spec:
   params:
@@ -61,16 +69,17 @@ spec:
       default: ""
     - name: browser
       default: ""
+    - name: version
+      default: ""
   steps:
     - name: echo
       image: alpine
       script: |
         echo "$(params.platform) and $(params.browser)"
-`, helpers.ObjectNameForTest(t), namespace))
+`, namespace))
 	if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 	}
-
 	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -78,6 +87,8 @@ metadata:
 spec:
   tasks:
     - name: platforms-and-browsers
+      taskRef:
+        name: mytask
       matrix:
         params:
           - name: platform
@@ -90,6 +101,9 @@ spec:
               - chrome
               - safari
               - firefox
+      params:
+        - name: version
+          value: v0.33.0
       taskRef:
         name:  %s
 `, helpers.ObjectNameForTest(t), namespace, task.Name))
@@ -111,6 +125,161 @@ spec:
 	name := "matrix"
 	prName := pipelineRun.Name
 	expectedTaskRunNames := []string{"platforms-and-browsers-0", "platforms-and-browsers-1", "platforms-and-browsers-2", "platforms-and-browsers-3", "platforms-and-browsers-4", "platforms-and-browsers-5", "platforms-and-browsers-6", "platforms-and-browsers-7", "platforms-and-browsers-8"}
+	expectedTaskRuns := []*v1beta1.TaskRun{
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-0", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: chrome
+  - name: platform
+    value: linux
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-1", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: chrome
+  - name: platform
+    value: mac
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-2", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: chrome
+  - name: platform
+    value: windows
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-3", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: safari
+  - name: platform
+    value: linux
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-4", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: safari
+  - name: platform
+    value: mac
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-5", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: safari
+  - name: platform
+    value: windows
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-6", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: firefox
+  - name: platform
+    value: linux
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-7", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: firefox
+  - name: platform
+    value: mac
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-8", namespace,
+				prName, pipeline.Name, task.Name, false),
+			`
+spec:
+  params:
+  - name: browser
+    value: firefox
+  - name: platform
+    value: windows
+  - name: version
+    value: v0.33.0
+  serviceAccountName: default
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+	}
 	expectedNumberOfEvents := 1
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
 	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
@@ -120,6 +289,17 @@ spec:
 	actualTaskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", prName)})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
+	}
+
+	for i := range actualTaskrunList.Items {
+		expectedTaskRun := expectedTaskRuns[i]
+		fmt.Println("expectedTaskRun", expectedTaskRun.Spec)
+		fmt.Println("actual", actualTaskrunList.Items[i].Spec)
+		// expectedTaskRun.Labels["tekton.dev/pipeline"] = tt.name
+		// expectedTaskRun.Labels["tekton.dev/memberOf"] = tt.memberOf
+		if d := cmp.Diff(expectedTaskRun.Spec, actualTaskrunList.Items[i].Spec, ignoreResourceVersion, ignoreTypeMeta); d != "" {
+			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
+		}
 	}
 
 	for _, taskRunName := range expectedTaskRunNames {
@@ -167,4 +347,42 @@ spec:
 
 		t.Logf("Successfully finished test %q", name)
 	}
+}
+
+func taskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName string, skipMemberOfLabel bool) metav1.ObjectMeta {
+	om := metav1.ObjectMeta{
+		Name:      trName,
+		Namespace: ns,
+		OwnerReferences: []metav1.OwnerReference{{
+			Kind:               "PipelineRun",
+			Name:               prName,
+			APIVersion:         "tekton.dev/v1beta1",
+			Controller:         &trueb,
+			BlockOwnerDeletion: &trueb,
+		}},
+		Labels: map[string]string{
+			pipeline.PipelineLabelKey:     pipelineName,
+			pipeline.PipelineRunLabelKey:  prName,
+			pipeline.PipelineTaskLabelKey: pipelineTaskName,
+		},
+		Annotations: map[string]string{},
+	}
+	if !skipMemberOfLabel {
+		om.Labels[pipeline.MemberOfLabelKey] = v1beta1.PipelineTasks
+	}
+	return om
+}
+
+func mustParseTaskRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.TaskRun {
+	t.Helper()
+	tr := parse.MustParseV1beta1TaskRun(t, asYAML)
+	tr.ObjectMeta = objectMeta
+	return tr
+}
+
+func mustParseCustomRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.CustomRun {
+	t.Helper()
+	r := parse.MustParseCustomRun(t, asYAML)
+	r.ObjectMeta = objectMeta
+	return r
 }
