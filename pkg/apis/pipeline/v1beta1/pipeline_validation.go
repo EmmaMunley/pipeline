@@ -157,7 +157,8 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		// when the enable-api-fields feature gate is anything but "alpha".
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
-		errs = errs.Also(pt.Matrix.validateNoWholeArrayResults())
+		// TODO: remove this function since this PR is to support whole array results
+		// errs = errs.Also(pt.Matrix.validateNoWholeArrayResults())
 	}
 	errs = errs.Also(pt.Matrix.validateParameterInOneOfMatrixOrParams(pt.Params))
 	return errs
