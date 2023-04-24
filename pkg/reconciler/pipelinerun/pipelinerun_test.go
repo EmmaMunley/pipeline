@@ -10850,7 +10850,7 @@ spec:
 	}
 }
 
-func TestReconciler_PipelineTaskResults(t *testing.T) {
+func TestReconciler_MatrixWithArrayResults(t *testing.T) {
 	names.TestingSeed()
 
 	task := parse.MustParseV1beta1Task(t, `
@@ -10948,9 +10948,9 @@ spec:
         params:
           - name: platform
             value:
-              - $(tasks. pt-with-result.results.platforms[0])
-              - $(tasks. pt-with-result.results.platforms[1])
-              - $(tasks. pt-with-result.results.platforms[2])
+              - $(tasks.pt-with-result.results.platforms[0])
+              - $(tasks.pt-with-result.results.platforms[1])
+              - $(tasks.pt-with-result.results.platforms[2])
       taskRef:
         name: mytask
 `, "p-dag")),

@@ -1,0 +1,87 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: mytask
+spec:
+  params:
+    - name: platform
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.platform)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: taskwithresults
+spec:
+  results:
+    - name: platforms
+      type: array
+  steps:
+    - name: produce-a-list-of-platforms
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-matrix-results
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: get-platforms
+        taskRef:
+          name: taskwithresults
+      - name: platforms-with-results
+        matrix:
+          params:
+            - name: platform
+              value:
+                - $(tasks.get-platforms.results.platforms[0])
+                - $(tasks.get-platforms.results.platforms[1])
+                - $(tasks.get-platforms.results.platforms[2])
+        taskRef:
+          name: mytask
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: taskwithresults
+spec:
+  results:
+    - name: platforms
+      type: array
+  steps:
+    - name: produce-a-list-of-platforms
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-matrix-results
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: get-platforms
+        taskRef:
+          name: taskwithresults
+      - name: platforms-with-results
+        matrix:
+          params:
+            - name: platform
+              value:
+                - $(tasks.get-platforms.results.platforms[0])
+                - $(tasks.get-platforms.results.platforms[1])
+                - $(tasks.get-platforms.results.platforms[2])
+        taskRef:
+          name: mytask
