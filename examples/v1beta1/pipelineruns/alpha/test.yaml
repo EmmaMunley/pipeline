@@ -56,8 +56,7 @@ spec:
         matrix:
           params:
             - name: platform
-              value:
-                - $(tasks.get-platforms.results.platforms[*])
+              value: $(tasks.get-platforms.results.platforms)
             - name: browser
               value:
                 - $(tasks.get-browsers-and-url.results.browsers[0])
