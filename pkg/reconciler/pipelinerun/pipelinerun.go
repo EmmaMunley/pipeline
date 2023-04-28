@@ -349,6 +349,7 @@ func (c *Reconciler) resolvePipelineState(
 			},
 			getCustomRunFunc,
 			task,
+			pst,
 		)
 		if err != nil {
 			if tresources.IsGetTaskErrTransient(err) {
@@ -717,17 +718,13 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		return controller.NewPermanentError(err)
 	}
 
-	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRpts)
+	// Check for Missing Result References
+	err = resources.CheckMissingResultReferences(pipelineRunFacts.State, nextRpts)
 	if err != nil {
 		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
 		return controller.NewPermanentError(err)
 	}
-
-	resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
-	// After we apply Task Results, we may be able to evaluate more
-	// when expressions, so reset the skipped cache
-	pipelineRunFacts.ResetSkippedCache()
 
 	// GetFinalTasks only returns final tasks when a DAG is complete
 	fNextRpts := pipelineRunFacts.GetFinalTasks()
@@ -810,7 +807,6 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	if rpt.PipelineTask.IsMatrixed() {
 		matrixCombinations = rpt.PipelineTask.Matrix.FanOut()
 	}
-
 	for i, taskRunName := range rpt.TaskRunNames {
 		var params v1beta1.Params
 		if len(matrixCombinations) > i {
@@ -891,7 +887,6 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 	if rpt.PipelineTask.IsMatrixed() {
 		matrixCombinations = rpt.PipelineTask.Matrix.FanOut()
 	}
-
 	for i, customRunName := range rpt.CustomRunNames {
 		var params v1beta1.Params
 		if len(matrixCombinations) > i {
