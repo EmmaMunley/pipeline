@@ -1805,7 +1805,7 @@ func TestHasRunObjectsStarted(t *testing.T) {
 	}
 }
 
-func TestAreRunObjectsConditionStatusFalse(t *testing.T) {
+func TestIsConditionStatusFalse(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		rpt  ResolvedPipelineTask
@@ -1944,21 +1944,7 @@ func TestAreRunObjectsConditionStatusFalse(t *testing.T) {
 			RunObjects:   []v1beta1.RunObject{withCustomRunCancelled(newCustomRun(customRuns[0])), makeCustomRunStarted(customRuns[1])},
 		},
 		want: false,
-	}} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.rpt.areRunObjectsConditionStatusFalse(); got != tc.want {
-				t.Errorf("expected areRunObjectsConditionStatusFalse: %t but got %t", tc.want, got)
-			}
-		})
-	}
-}
-
-func TestAreTaskRunsConditionStatusFalse(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		rpt  ResolvedPipelineTask
-		want bool
-	}{{
+	}, {
 		name: "taskrun not started",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -2084,8 +2070,8 @@ func TestAreTaskRunsConditionStatusFalse(t *testing.T) {
 		want: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.rpt.areTaskRunsConditionStatusFalse(); got != tc.want {
-				t.Errorf("expected areTaskRunsConditionStatusFalse: %t but got %t", tc.want, got)
+			if got := tc.rpt.isConditionStatusFalse(); got != tc.want {
+				t.Errorf("expected isConditionStatusFalse: %t but got %t", tc.want, got)
 			}
 		})
 	}
@@ -3362,7 +3348,7 @@ func TestGetNamesOfRuns(t *testing.T) {
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			namesOfRunsFromChildRefs := getNamesOfRuns(childRefs, tc.ptName, testPrName, 2)
+			namesOfRunsFromChildRefs := GetNamesOfRuns(childRefs, tc.ptName, testPrName, 2)
 			sort.Strings(namesOfRunsFromChildRefs)
 			if d := cmp.Diff(tc.wantRunNames, namesOfRunsFromChildRefs); d != "" {
 				t.Errorf("getRunName: %s", diff.PrintWantGot(d))
@@ -3555,6 +3541,16 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 				Name:  "browsers",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
 			}},
+		},
+	}, {
+		Name: "pipelinetask-with-whole-array-results",
+		TaskRef: &v1beta1.TaskRef{
+			Name: "my-task-with-results",
+		},
+		Matrix: &v1beta1.Matrix{
+			Params: v1beta1.Params{{
+				Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "$(tasks.foo-task.results.arr-results[*])"},
+			}},
 		}}}
 
 	rtr := &resources.ResolvedTask{
@@ -3591,6 +3587,15 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 			TaskRuns:     taskRuns,
 			PipelineTask: &pts[1],
 			ResolvedTask: rtr,
+		},
+	}, {
+		name: "task with matrix - whole array results",
+		pt:   pts[2],
+		want: &ResolvedPipelineTask{
+			TaskRunNames: nil,
+			TaskRuns:     nil,
+			PipelineTask: &pts[2],
+			ResolvedTask: nil,
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -3666,6 +3671,17 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 				Name:  "browsers",
 				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
 			}}},
+	}, {
+		Name: "pipelinetask-custom-task-with-whole-array-results",
+		TaskRef: &v1beta1.TaskRef{
+			APIVersion: "example.dev/v0",
+			Kind:       "Example",
+			Name:       "my-task",
+		},
+		Matrix: &v1beta1.Matrix{
+			Params: v1beta1.Params{{
+				Name: "foo", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "$(tasks.foo-task.results.arr-results[*])"}},
+			}},
 	}}
 
 	getTask := func(ctx context.Context, name string) (*v1beta1.Task, *v1beta1.RefSource, error) {
@@ -3708,6 +3724,15 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 			RunObjectNames: runNames,
 			RunObjects:     nil,
 			PipelineTask:   &pts[1],
+		},
+	}, {
+		name: "custom task with matrix - whole array results",
+		pt:   pts[2],
+		want: &ResolvedPipelineTask{
+			CustomTask:     true,
+			RunObjectNames: nil,
+			RunObjects:     nil,
+			PipelineTask:   &pts[2],
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

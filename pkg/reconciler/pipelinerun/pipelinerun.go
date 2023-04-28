@@ -773,6 +773,12 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}()
 
 		if rpt.IsCustomTask() {
+			// RunObject Names have not yet been populated for a matrix that has whole array references
+			// Since we have already applied Task Results, we can now get the names of the RunObjects
+			// after array result substitution before fanning out the Matrix and creating RunObjects
+			if len(rpt.RunObjectNames) == 0 {
+				rpt.RunObjectNames = resources.GetNamesOfRuns(pr.Status.ChildReferences, rpt.PipelineTask.Name, pr.Name, rpt.PipelineTask.Matrix.CountCombinations())
+			}
 			rpt.RunObjects, err = c.createRunObjects(ctx, rpt, pr)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "RunsCreationFailed", "Failed to create Runs %q: %v", rpt.RunObjectNames, err)
@@ -780,6 +786,12 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				return err
 			}
 		} else {
+			// TaskRun Names have not yet been populated for a matrix that has whole array references
+			// Since we have already applied Task Results, we can now get the names of the TaskRuns
+			// after array result substitution before fanning out the Matrix and creating TaskRuns
+			if len(rpt.TaskRunNames) == 0 {
+				rpt.TaskRunNames = resources.GetNamesOfTaskRuns(pr.Status.ChildReferences, rpt.PipelineTask.Name, pr.Name, rpt.PipelineTask.Matrix.CountCombinations())
+			}
 			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
@@ -810,7 +822,6 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	if rpt.PipelineTask.IsMatrixed() {
 		matrixCombinations = rpt.PipelineTask.Matrix.FanOut()
 	}
-
 	for i, taskRunName := range rpt.TaskRunNames {
 		var params v1beta1.Params
 		if len(matrixCombinations) > i {
@@ -860,7 +871,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		tr.Spec.Timeout = rpt.PipelineTask.Timeout
 	}
 
-	if rpt.ResolvedTask.TaskName != "" {
+	if rpt.PipelineTask.TaskRef != nil {
 		// We pass the entire, original task ref because it may contain additional references like a Bundle url.
 		tr.Spec.TaskRef = rpt.PipelineTask.TaskRef
 	} else if rpt.ResolvedTask.TaskSpec != nil {

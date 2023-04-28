@@ -552,7 +552,7 @@ func ResolvePipelineTask(
 		numCombinations = pipelineTask.Matrix.CountCombinations()
 	}
 	if rpt.IsCustomTask() {
-		rpt.RunObjectNames = getNamesOfRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)
+		rpt.RunObjectNames = GetNamesOfRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)
 		for _, runName := range rpt.RunObjectNames {
 			run, err := getRun(runName)
 			if err != nil && !kerrors.IsNotFound(err) {
@@ -703,9 +703,9 @@ func getRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string)
 	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 }
 
-// getNamesOfRuns should return a unique names for `RunObjects` if they have not already been defined,
+// GetNamesOfRuns should return a unique names for `RunObjects` if they have not already been defined,
 // and the existing ones otherwise.
-func getNamesOfRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, numberOfRuns int) []string {
+func GetNamesOfRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, numberOfRuns int) []string {
 	if runNames := getRunNamesFromChildRefs(childRefs, ptName); runNames != nil {
 		return runNames
 	}
