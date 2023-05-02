@@ -11934,6 +11934,8 @@ spec:
   params:
     - name: GOARCHs
       type: array
+    - name: versions
+      type: array
   tasks:
     - name: matrix-include
       taskRef:
@@ -11943,9 +11945,7 @@ spec:
           - name: GOARCH
             value: $(params.GOARCHs[*])
           - name: version
-            value:
-              - go1.17
-              - go1.18.1
+            value: $(params.versions[*])
         include:
          - name: common-package
            params:
@@ -11982,6 +11982,10 @@ spec:
       - linux/amd64
       - linux/ppc64le
       - linux/s390x
+   - name: versions
+     value:
+      - go1.17
+      - go1.18.1
   serviceAccountName: test-sa
   pipelineRef:
     name: p-dag
@@ -11989,6 +11993,8 @@ status:
   pipelineSpec:
     params:
      - name: GOARCHs
+       type: array
+     - name: versions
        type: array
     tasks:
     - name: matrix-include
@@ -12077,6 +12083,10 @@ spec:
      - linux/amd64
      - linux/ppc64le
      - linux/s390x
+  - name: versions
+    value:
+     - go1.17
+     - go1.18.1
   pipelineRef:
     name: %s
 `, tt.name))
