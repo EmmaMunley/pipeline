@@ -42,9 +42,7 @@ var (
 		"enable-api-fields": "alpha",
 	}
 	ignoreResourceVersion = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
-	ignoreTypeMeta        = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
-	ignoreTimeout          = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "Timeout")
-	trueb = true
+	trueb                 = true
 )
 
 // TestPipelineRunMatrixed is an integration test that will
@@ -139,6 +137,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -156,6 +155,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -173,6 +173,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -190,6 +191,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -207,6 +209,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -224,6 +227,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -241,6 +245,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -258,6 +263,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -275,6 +281,7 @@ spec:
   - name: version
     value: v0.33.0
   serviceAccountName: default
+  timeout: 1h0m0s
   taskRef:
     name: mytask
     kind: Task
@@ -295,8 +302,6 @@ spec:
 		expectedTaskRun := expectedTaskRuns[i]
 		fmt.Println("expectedTaskRun", expectedTaskRun.Spec)
 		fmt.Println("actual", actualTaskrunList.Items[i].Spec)
-		// expectedTaskRun.Labels["tekton.dev/pipeline"] = tt.name
-		// expectedTaskRun.Labels["tekton.dev/memberOf"] = tt.memberOf
 		if d := cmp.Diff(expectedTaskRun.Spec, actualTaskrunList.Items[i].Spec, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
 		}
