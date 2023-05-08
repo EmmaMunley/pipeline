@@ -130,15 +130,16 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	var resultValue v1beta1.ResultValue
 	var err error
 	if referencedPipelineTask.IsCustomTask() {
-		runName = referencedPipelineTask.RunObject.GetObjectMeta().GetName()
-		runValue, err = findRunResultForParam(referencedPipelineTask.RunObject, resultRef)
+		runName = referencedPipelineTask.RunObjects[0].GetObjectMeta().GetName()
+		runValue, err = findRunResultForParam(referencedPipelineTask.RunObjects[0], resultRef)
 		resultValue = *v1beta1.NewStructuredValues(runValue)
 		if err != nil {
 			return nil, resultRef.PipelineTask, err
 		}
 	} else {
-		taskRunName = referencedPipelineTask.TaskRun.Name
-		resultValue, err = findTaskResultForParam(referencedPipelineTask.TaskRun, resultRef)
+		// This is indexing 0 because Matrix does not currently support producing results
+		taskRunName = referencedPipelineTask.TaskRuns[0].Name
+		resultValue, err = findTaskResultForParam(referencedPipelineTask.TaskRuns[0], resultRef)
 		if err != nil {
 			return nil, resultRef.PipelineTask, err
 		}

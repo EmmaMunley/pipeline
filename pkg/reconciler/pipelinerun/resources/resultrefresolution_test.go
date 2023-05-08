@@ -39,8 +39,8 @@ var (
 )
 
 var pipelineRunState = PipelineRunState{{
-	TaskRunName: "aTaskRun",
-	TaskRun: &v1beta1.TaskRun{
+	TaskRunNames: []string{"aTaskRun"},
+	TaskRuns: []*v1beta1.TaskRun{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "aTaskRun",
 		},
@@ -55,7 +55,7 @@ var pipelineRunState = PipelineRunState{{
 				}},
 			},
 		},
-	},
+	}},
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "aTask",
 		TaskRef: &v1beta1.TaskRef{Name: "aTask"},
@@ -99,22 +99,23 @@ var pipelineRunState = PipelineRunState{{
 		}},
 	},
 }, {
-	CustomTask:    true,
-	RunObjectName: "aRun",
-	RunObject: &v1beta1.CustomRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "aRun"},
-		Status: v1beta1.CustomRunStatus{
-			Status: duckv1.Status{
-				Conditions: []apis.Condition{successCondition},
+	CustomTask:     true,
+	RunObjectNames: []string{"aRun"},
+	RunObjects: []v1beta1.RunObject{
+		&v1beta1.CustomRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "aRun"},
+			Status: v1beta1.CustomRunStatus{
+				Status: duckv1.Status{
+					Conditions: []apis.Condition{successCondition},
+				},
+				CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+					Results: []v1beta1.CustomRunResult{{
+						Name:  "aResult",
+						Value: "aResultValue",
+					}},
+				},
 			},
-			CustomRunStatusFields: v1beta1.CustomRunStatusFields{
-				Results: []v1beta1.CustomRunResult{{
-					Name:  "aResult",
-					Value: "aResultValue",
-				}},
-			},
-		},
-	},
+		}},
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "aCustomPipelineTask",
 		TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "aTask"},
@@ -129,8 +130,8 @@ var pipelineRunState = PipelineRunState{{
 		}},
 	},
 }, {
-	TaskRunName: "cTaskRun",
-	TaskRun: &v1beta1.TaskRun{
+	TaskRunNames: []string{"cTaskRun"},
+	TaskRuns: []*v1beta1.TaskRun{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "cTaskRun",
 		},
@@ -145,7 +146,7 @@ var pipelineRunState = PipelineRunState{{
 				}},
 			},
 		},
-	},
+	}},
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "cTask",
 		TaskRef: &v1beta1.TaskRef{Name: "cTask"},
@@ -155,8 +156,8 @@ var pipelineRunState = PipelineRunState{{
 		}},
 	},
 }, {
-	TaskRunName: "dTaskRun",
-	TaskRun: &v1beta1.TaskRun{
+	TaskRunNames: []string{"dTaskRun"},
+	TaskRuns: []*v1beta1.TaskRun{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "dTaskRun",
 		},
@@ -171,7 +172,7 @@ var pipelineRunState = PipelineRunState{{
 				}},
 			},
 		},
-	},
+	}},
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "dTask",
 		TaskRef: &v1beta1.TaskRef{Name: "dTask"},
