@@ -114,7 +114,7 @@ func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 	for _, t := range state {
 		if t.IsCustomTask() && t.RunObject != nil {
 			return false
-		} else if t.TaskRun != nil {
+		} else if len(t.TaskRuns) > 0 {
 			return false
 		}
 	}
@@ -132,16 +132,19 @@ func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) *metav1.Time {
 	adjustedStartTime := unadjustedStartTime
 	for _, rpt := range state {
-		if rpt.TaskRun == nil {
+		if len(rpt.TaskRuns) == 0 {
 			if rpt.RunObject != nil {
+				// if len(rpt.RunObjects) > 0
 				creationTime := rpt.RunObject.GetObjectMeta().GetCreationTimestamp()
 				if creationTime.Time.Before(adjustedStartTime.Time) {
 					adjustedStartTime = &creationTime
 				}
 			}
 		} else {
-			if rpt.TaskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
-				adjustedStartTime = &rpt.TaskRun.CreationTimestamp
+			if rpt.TaskRuns[0] != nil {
+				if rpt.TaskRuns[0].CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+					adjustedStartTime = &rpt.TaskRuns[0].CreationTimestamp
+				}
 			}
 		}
 	}
@@ -159,10 +162,12 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1beta1.TaskRunR
 		if !rpt.isSuccessful() {
 			continue
 		}
-		if rpt.TaskRun != nil {
-			results[rpt.PipelineTask.Name] = rpt.TaskRun.Status.TaskRunResults
+		// Currently a Matrix cannot produce results so this is for singular TaskRuns
+		if len(rpt.TaskRuns) == 1 {
+			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.TaskRunResults
 		}
 	}
+	fmt.Println(results)
 	return results
 }
 
@@ -190,14 +195,13 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1beta1.CustomRunRes
 // TaskRuns and Runs in the state.
 func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReference {
 	var childRefs []v1beta1.ChildStatusReference
-
+	fmt.Println("GetChildReferences!!")
 	for _, rpt := range state {
+		fmt.Println("taskRuns", rpt.TaskRuns)
 		switch {
 		case rpt.RunObject != nil:
 			childRefs = append(childRefs, rpt.getChildRefForRun(rpt.RunObject))
-		case rpt.TaskRun != nil:
-			childRefs = append(childRefs, rpt.getChildRefForTaskRun(rpt.TaskRun))
-		case len(rpt.TaskRuns) != 0:
+		case len(rpt.TaskRuns) > 0:
 			for _, taskRun := range rpt.TaskRuns {
 				if taskRun != nil {
 					childRefs = append(childRefs, rpt.getChildRefForTaskRun(taskRun))
@@ -245,7 +249,7 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 	tasks := []*ResolvedPipelineTask{}
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
-			if t.TaskRun == nil && t.RunObject == nil && len(t.TaskRuns) == 0 && len(t.RunObjects) == 0 {
+			if t.RunObject == nil && len(t.TaskRuns) == 0 && len(t.RunObjects) == 0 {
 				tasks = append(tasks, t)
 			}
 		}
@@ -523,6 +527,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 func (facts *PipelineRunFacts) completedOrSkippedDAGTasks() []string {
 	tasks := []string{}
 	for _, t := range facts.State {
+
 		if facts.isDAGTask(t.PipelineTask.Name) {
 			if t.isDone(facts) {
 				tasks = append(tasks, t.PipelineTask.Name)

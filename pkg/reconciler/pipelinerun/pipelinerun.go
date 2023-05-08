@@ -747,12 +747,14 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 			nextRpts = append(nextRpts, rpt)
 		}
 	}
-
+	fmt.Println("nextRpts?", nextRpts)
 	for _, rpt := range nextRpts {
+		fmt.Println("HERE")
 		if rpt.IsFinalTask(pipelineRunFacts) {
 			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
 		}
 		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
+			fmt.Println("HERE")
 			continue
 		}
 
@@ -766,7 +768,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}
 
 		defer func() {
-			// If it is a permanent error, set pipelinerun to a failure state directly to avoid unnecessary retries.
+			// If it is a permanent error, set pipe linerun to a failure state directly to avoid unnecessary retries.
 			if err != nil && controller.IsPermanentError(err) {
 				pr.Status.MarkFailed(ReasonCreateRunFailed, err.Error())
 			}
@@ -787,18 +789,32 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				err = fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rpt.RunObjectName, rpt.PipelineTask.Name, pr.Name, err)
 				return err
 			}
-		case rpt.PipelineTask.IsMatrixed():
+		// case rpt.PipelineTask.IsMatrixed():
+		// 	fmt.Println("HERE")
+		// 	rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
+		// 	if err != nil {
+		// 		recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
+		// 		err = fmt.Errorf("error creating TaskRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunNames, rpt.PipelineTask.Name, pr.Name, err)
+		// 		return err
+		// 	}
+		// 		default:
+		// 			fmt.Println("TEST DEFAULT")
+		// 			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
+		// 			if err != nil {
+		// 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rpt.TaskRunNames[0], err)
+		// 				err = fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunNames[0], rpt.PipelineTask.Name, pr.Name, err)
+		// 				return err
+		// 			}
+		// 		}
+		// 	}
+		// 	return nil
+		// }
+		default:
+			fmt.Println("TEST DEFAULT")
 			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
 			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
-				err = fmt.Errorf("error creating TaskRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunNames, rpt.PipelineTask.Name, pr.Name, err)
-				return err
-			}
-		default:
-			rpt.TaskRun, err = c.createTaskRun(ctx, rpt.TaskRunName, nil, rpt, pr)
-			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rpt.TaskRunName, err)
-				err = fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunName, rpt.PipelineTask.Name, pr.Name, err)
+				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rpt.TaskRunNames[0], err)
+				err = fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunNames[0], rpt.PipelineTask.Name, pr.Name, err)
 				return err
 			}
 		}
@@ -820,9 +836,18 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
 	var taskRuns []*v1beta1.TaskRun
-	matrixCombinations := rpt.PipelineTask.Matrix.FanOut()
+	var matrixCombinations []v1beta1.Params
+	isMatrixed := rpt.PipelineTask.IsMatrixed()
+	if isMatrixed {
+		matrixCombinations = rpt.PipelineTask.Matrix.FanOut()
+	}
+
 	for i, taskRunName := range rpt.TaskRunNames {
-		params := matrixCombinations[i]
+		var params v1beta1.Params
+		if isMatrixed {
+			params = matrixCombinations[i]
+		}
+
 		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr)
 		if err != nil {
 			return nil, err
@@ -833,6 +858,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 }
 
 func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, params v1beta1.Params, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun) (*v1beta1.TaskRun, error) {
+	fmt.Println("CREATUBG TASK RUN 1", taskRunName)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRun")
 	defer span.End()
 	logger := logging.FromContext(ctx)
