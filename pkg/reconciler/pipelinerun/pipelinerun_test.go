@@ -11787,22 +11787,6 @@ spec:
         echo "$(params.GOARCH) and $(params.version)"
 `)
 
-	taskwithresults := parse.MustParseV1beta1Task(t, `
-metadata:
-  name: taskwithresults
-  namespace: foo
-spec:
-  results:
-    - name: GOARCHs
-      type: array
-  steps:
-    - name: produce-a-list-of-GOARCHs
-      image: bash:latest
-      script: |
-        #!/usr/bin/env bash
-        echo -n "[\"linux/amd64\",\"linux/ppc64le\",\"linux/amd64\"]" | tee $(results.GOARCHs.path)
-`)
-
 	expectedTaskRuns := []*v1beta1.TaskRun{
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-matrix-include-0", "foo",
@@ -11948,25 +11932,18 @@ metadata:
   namespace: foo
 spec:
   params:
+    - name: GOARCHs
+      type: array
     - name: versions
       type: array
   tasks:
-    - name: pt-with-result
-      params:
-       - name: GOARCHs
-         type: array
-      taskRef:
-        name: taskwithresults
     - name: matrix-include
       taskRef:
         name: mytask
       matrix:
         params:
           - name: GOARCH
-            value:
-              - $(tasks.pt-with-result.results.GOARCHs[0])
-              - $(tasks.pt-with-result.results.GOARCHs[1])
-              - $(tasks.pt-with-result.results.GOARCHs[2])
+            value: $(params.GOARCHs[*])
           - name: version
             value: $(params.versions[*])
         include:
@@ -11991,27 +11968,6 @@ spec:
             - name: GOARCH
               value: I-do-not-exist
 `, "p-dag")),
-		tr: mustParseTaskRunWithObjectMeta(t,
-			taskRunObjectMeta("pr-pt-with-result", "foo",
-				"pr", "p-dag", "pt-with-result", false),
-			`
-spec:
-  serviceAccountName: test-sa
-  taskRef:
-    name: taskwithresults
-status:
- conditions:
-  - type: Succeeded
-    status: "True"
-    reason: Succeeded
-    message: All Tasks have completed executing
- taskResults:
-  - name: GOARCHs
-    value:
-     - linux/amd64
-     - linux/ppc64le
-     - linux/s390x
-`),
 		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
@@ -12021,6 +11977,11 @@ metadata:
     tekton.dev/pipeline: p-dag
 spec:
   params:
+   - name: GOARCHs
+     value:
+      - linux/amd64
+      - linux/ppc64le
+      - linux/s390x
    - name: versions
      value:
       - go1.17
@@ -12031,16 +11992,11 @@ spec:
 status:
   pipelineSpec:
     params:
+     - name: GOARCHs
+       type: array
      - name: versions
        type: array
     tasks:
-    - name: pt-with-result
-      params:
-        - name: platforms
-          type: array
-      taskRef:
-        name: taskwithresults
-        kind: Task
     - name: matrix-include
       taskRef:
         name: mytask
@@ -12049,9 +12005,9 @@ status:
         params:
           - name: GOARCH
             value:
-              - $(tasks.pt-with-result.results.GOARCHs[0])
-              - $(tasks.pt-with-result.results.GOARCHs[1])
-              - $(tasks.pt-with-result.results.GOARCHs[2])
+              - linux/amd64
+              - linux/ppc64le
+              - linux/s390x
           - name: version
             value:
               - go1.17
@@ -12081,12 +12037,8 @@ status:
   - type: Succeeded
     status: "Unknown"
     reason: "Running"
-    message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
+    message: "Tasks Completed: 0 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
   childReferences:
-  - apiVersion: tekton.dev/v1beta1
-    kind: TaskRun
-    name: pr-pt-with-result
-    pipelineTaskName: pt-with-result
   - apiVersion: tekton.dev/v1beta1
     kind: TaskRun
     name: pr-matrix-include-0
@@ -12126,6 +12078,11 @@ metadata:
 spec:
   serviceAccountName: test-sa
   params:
+  - name: GOARCHs
+    value:
+     - linux/amd64
+     - linux/ppc64le
+     - linux/s390x
   - name: versions
     value:
      - go1.17
@@ -12136,7 +12093,7 @@ spec:
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{pr},
 				Pipelines:    []*v1beta1.Pipeline{tt.p},
-				Tasks:        []*v1beta1.Task{task, taskwithresults},
+				Tasks:        []*v1beta1.Task{task},
 				ConfigMaps:   cms,
 			}
 			if tt.tr != nil {
@@ -12144,18 +12101,33 @@ spec:
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
-			pipelineRun, clients := prt.reconcileRun(pr.Namespace, pr.Name, []string{} /* wantEvents*/, false /* permanentError*/)
 
-			taskRuns := getTaskRunsForPipelineTask(prt.TestAssets.Ctx, t, clients, pr.Namespace, pr.Name, "matrix-include")
-			validateTaskRunsCount(t, taskRuns, len(expectedTaskRuns))
-			for _, expectedTaskRun := range expectedTaskRuns {
-				trName := expectedTaskRun.Name
-				actual := getTaskRunByName(t, taskRuns, trName)
-				if d := cmp.Diff(expectedTaskRun, actual, ignoreResourceVersion, ignoreTypeMeta); d != "" {
-					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun.Name, diff.PrintWantGot(d))
+			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
+			taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=pr,tekton.dev/pipeline=%s,tekton.dev/pipelineTask=matrix-include", tt.name),
+				Limit:         1,
+			})
+			if err != nil {
+				t.Fatalf("Failure to list TaskRun's %s", err)
+			}
+
+			if len(taskRuns.Items) != 7 {
+				t.Fatalf("Expected 7 TaskRuns got %d", len(taskRuns.Items))
+			}
+
+			for i := range taskRuns.Items {
+				expectedTaskRun := expectedTaskRuns[i]
+				expectedTaskRun.Labels["tekton.dev/pipeline"] = tt.name
+				expectedTaskRun.Labels["tekton.dev/memberOf"] = tt.memberOf
+				if d := cmp.Diff(expectedTaskRun, &taskRuns.Items[i], ignoreResourceVersion, ignoreTypeMeta); d != "" {
+					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
 				}
 			}
 
+			pipelineRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "pr", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
+			}
 			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
