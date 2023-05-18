@@ -1,21 +1,4 @@
 apiVersion: tekton.dev/v1beta1
-kind: Task
-metadata:
-  name: run-tests
-  annotations:
-    description: |
-      A task run tests with different combinations of platforms and browsers
-spec:
-  params:
-    - name: outputs
-      type: array
-  steps:
-    - name: echo
-      image: alpine
-      script: |
-        echo "running tests on $(params.outputs)"
----
-apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   generateName: matrixed-pr-
@@ -43,20 +26,24 @@ spec:
             - name: browser
               type: string
           results:
-            - name: output
+            - name: report-url
               type: string
           steps:
             - name: echo
               image: alpine
               script: |
-                echo "$(params.platform)-$(params.browser)"
-      - name: platforms-and-browsers-dag
-        matrix:
-          params:
-            - name: outputs
-              value:
-                - $(tasks.produce-platforms-and-browsers.results.output[0])
-                - $(tasks.produce-platforms-and-browsers.results.output[1])
-                - $(tasks.produce-platforms-and-browsers.results.output[2])
-        taskRef:
-          name: run-tests
+                echo "https://api.example/get-report/$(params.platform)-$(params.browser)"
+      - name: fetch-linux-reports
+        params:
+          - name: report-url
+            value:
+              - $(tasks.produce-platforms-and-browsers.results.report-url[0])
+              - $(tasks.produce-platforms-and-browsers.results.report-url[1])
+              - $(tasks.produce-platforms-and-browsers.results.report-url[2])
+        taskSpec:
+        steps:
+          - name: echo
+            image: alpine
+            script: |
+              ...
+              echo "fetching report: $(results.report-url)"

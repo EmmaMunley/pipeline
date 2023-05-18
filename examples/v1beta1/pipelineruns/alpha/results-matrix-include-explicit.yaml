@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: explicit-combos-with-results
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: build
+        matrix:
+          include:
+            - name: build-1
+              params:
+                - name: IMAGE
+                  value: image-1
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile1
+            - name: build-2
+              params:
+                - name: IMAGE
+                  value: image-2
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile2
+            - name: build-3
+              params:
+                - name: IMAGE
+                  value: image-3
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile3
+        taskSpec:
+          results:
+            - name: IMAGE-DIGEST
+              type: string
+      - name: deploy-build-1
+        matrix:
+          params:
+            - name: IMAGE-DIGEST
+              value: $(tasks.build-1.results.IMAGE-DIGEST)
+        taskSpec:
+          steps:
+            - name: echo
+              image: alpine
+              script: |
+                ...
+                echo "$SHA" | tee "$(results.IMAGE-DIGEST.path)"
+      - name: report-all
+        params:
+          - name: IMAGE-DIGEST
+            value: $(tasks.produce-platforms-and-browsers.results.IMAGE-DIGESTS[*])
+        taskSpec:
+          params:
+            - name: IMAGE-DIGEST
+              type: string
+          steps:
+            - name: echo
+              image: alpine
+              script: |
+                ...
+                echo "writing report to $(results.IMAGE-DIGEST.path)" | tee "$(results.IMAGE-DIGEST.path)"
