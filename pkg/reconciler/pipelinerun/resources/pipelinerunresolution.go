@@ -542,14 +542,18 @@ func ResolvePipelineTask(
 	getTaskRun resources.GetTaskRun,
 	getRun GetRun,
 	pipelineTask v1beta1.PipelineTask,
+	pst PipelineRunState,
 ) (*ResolvedPipelineTask, error) {
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
 	}
 	rpt.CustomTask = rpt.PipelineTask.TaskRef.IsCustomTask() || rpt.PipelineTask.TaskSpec.IsCustomTask()
 	numCombinations := 1
+	resolvedResultRefs, _, _ := ResolveResultRefs(pst, PipelineRunState{&rpt})
+	ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
+
 	if rpt.PipelineTask.IsMatrixed() {
-		numCombinations = pipelineTask.Matrix.CountCombinations()
+		numCombinations = rpt.PipelineTask.Matrix.CountCombinations()
 	}
 	if rpt.IsCustomTask() {
 		rpt.RunObjectNames = GetNamesOfRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)

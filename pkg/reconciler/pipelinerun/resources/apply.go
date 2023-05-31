@@ -176,8 +176,13 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = pipelineTask.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			if pipelineTask.IsMatrixed() {
+
+				fmt.Println("!!!!arrayReplacements", arrayReplacements)
+				fmt.Println("!!!!pipelineTask.Matrix.Params 1", pipelineTask.Matrix.Params)
 				// String replacements from string, array or object results or array replacements from array results are supported
 				pipelineTask.Matrix.Params = pipelineTask.Matrix.Params.ReplaceVariables(stringReplacements, arrayReplacements, nil)
+				fmt.Println("!!!!pipelineTask.Matrix.Params 2", pipelineTask.Matrix.Params)
+
 				for i := range pipelineTask.Matrix.Include {
 					// matrix include parameters can only be type string
 					pipelineTask.Matrix.Include[i].Params = pipelineTask.Matrix.Include[i].Params.ReplaceVariables(stringReplacements, nil, nil)

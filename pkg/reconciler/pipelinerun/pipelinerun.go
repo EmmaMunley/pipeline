@@ -354,6 +354,7 @@ func (c *Reconciler) resolvePipelineState(
 			},
 			getRunObjectFunc,
 			task,
+			pst,
 		)
 		if err != nil {
 			if tresources.IsGetTaskErrTransient(err) {
@@ -717,18 +718,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		return controller.NewPermanentError(err)
 	}
 
-	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRpts)
-	if err != nil {
-		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
-		return controller.NewPermanentError(err)
-	}
-
-	resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
-	// After we apply Task Results, we may be able to evaluate more
-	// when expressions, so reset the skipped cache
-	pipelineRunFacts.ResetSkippedCache()
-
 	// GetFinalTasks only returns final tasks when a DAG is complete
 	fNextRpts := pipelineRunFacts.GetFinalTasks()
 	if len(fNextRpts) != 0 {
@@ -773,12 +762,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}()
 
 		if rpt.IsCustomTask() {
-			// RunObject Names have not yet been populated for a matrix that has whole array references
-			// Since we have already applied Task Results, we can now get the names of the RunObjects
-			// after array result substitution before fanning out the Matrix and creating RunObjects
-			if len(rpt.RunObjectNames) == 0 {
-				rpt.RunObjectNames = resources.GetNamesOfRuns(pr.Status.ChildReferences, rpt.PipelineTask.Name, pr.Name, rpt.PipelineTask.Matrix.CountCombinations())
-			}
 			rpt.RunObjects, err = c.createRunObjects(ctx, rpt, pr)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "RunsCreationFailed", "Failed to create Runs %q: %v", rpt.RunObjectNames, err)
@@ -786,12 +769,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				return err
 			}
 		} else {
-			// TaskRun Names have not yet been populated for a matrix that has whole array references
-			// Since we have already applied Task Results, we can now get the names of the TaskRuns
-			// after array result substitution before fanning out the Matrix and creating TaskRuns
-			if len(rpt.TaskRunNames) == 0 {
-				rpt.TaskRunNames = resources.GetNamesOfTaskRuns(pr.Status.ChildReferences, rpt.PipelineTask.Name, pr.Name, rpt.PipelineTask.Matrix.CountCombinations())
-			}
 			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
