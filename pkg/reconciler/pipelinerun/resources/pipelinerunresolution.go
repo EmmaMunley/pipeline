@@ -37,6 +37,12 @@ const (
 	ReasonConditionCheckFailed = "ConditionCheckFailed"
 )
 
+var (
+	// ErrInvalidTaskResultReference indicates that the reason for the failure status is that there
+	// is an invalid task result reference
+	ErrInvalidTaskResultReference = errors.New("Invalid task result reference")
+)
+
 // TaskSkipStatus stores whether a task was skipped and why
 type TaskSkipStatus struct {
 	IsSkipped      bool
@@ -541,12 +547,20 @@ func ResolvePipelineTask(
 	getTaskRun resources.GetTaskRun,
 	getRun GetRun,
 	pipelineTask v1beta1.PipelineTask,
+	pst PipelineRunState,
 ) (*ResolvedPipelineTask, error) {
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
 	}
 	rpt.CustomTask = rpt.PipelineTask.TaskRef.IsCustomTask() || rpt.PipelineTask.TaskSpec.IsCustomTask()
 	numCombinations := 1
+
+	// We want to resolve all of the result references and ignore any errors at this point since there could be
+	// instances where result references are missing here, but will be later skipped or resolved in a subsequent
+	// TaskRun. The final validation is handled in skipBecauseResultReferencesAreMissing.
+	resolvedResultRefs, _, _ := ResolveResultRefs(pst, PipelineRunState{&rpt})
+	ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
+
 	if rpt.PipelineTask.IsMatrixed() {
 		numCombinations = pipelineTask.Matrix.CountCombinations()
 	}

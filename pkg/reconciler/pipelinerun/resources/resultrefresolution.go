@@ -167,7 +167,8 @@ func findRunResultForParam(customRun *v1beta1.CustomRun, reference *v1beta1.Resu
 			return result.Value, nil
 		}
 	}
-	return "", fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
+	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
+	return "", err
 }
 
 func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultRef) (v1beta1.ResultValue, error) {
@@ -177,7 +178,8 @@ func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultR
 			return result.Value, nil
 		}
 	}
-	return v1beta1.ResultValue{}, fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
+	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
+	return v1beta1.ResultValue{}, err
 }
 
 func (rs ResolvedResultRefs) getStringReplacements() map[string]string {
