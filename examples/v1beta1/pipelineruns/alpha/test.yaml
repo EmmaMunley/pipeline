@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: create-report-url
+        matrix:
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+            - name: browser
+              value:
+                - chrome
+                - safari
+                - firefox
+            - name: url
+              value: $(tasks.get-browsers-and-url.results.url)
+        taskSpec:
+          params:
+            - name: platform
+              type: string
+            - name: browser
+              type: string
+          results:
+            - name: report-url
+              type: string
+          steps:
+            - name: produce-a-report-url
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)"
+      # - name: fetch-linux-reports
+      #   params:
+      #     - name: report-url
+      #       value:
+      #         - $(tasks.create-report-url.results.report-url[0])
+      #   taskSpec:
+      #     steps:
+      #       - name: echo-report-url
+      #         image: bash:latest
+      #         script: |
+      #           #!/usr/bin/env bash
+      #           echo -n "fetching report: $(results.report-url)" | tee $(results.platforms.path)
