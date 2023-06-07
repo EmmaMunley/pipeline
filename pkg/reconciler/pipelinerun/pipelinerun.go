@@ -97,6 +97,9 @@ const (
 	// ReasonParameterMissing indicates that the reason for the failure status is that the
 	// associated PipelineRun didn't provide all the required parameters
 	ReasonParameterMissing = "ParameterMissing"
+	// ReasonResultMissing indicates that the reason for the failure status is that the
+	// associated PipelineRun didn't produce the results that was declared in the PipelineSpec
+	ReasonResultMissing = "ReasonResultMissing"
 	// ReasonFailedValidation indicates that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	ReasonFailedValidation = "PipelineValidationFailed"
@@ -724,12 +727,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		return controller.NewPermanentError(err)
 	}
 
-	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRpts)
-	if err != nil {
-		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
-		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
-		return controller.NewPermanentError(err)
-	}
+	resolvedResultRefs, _, _ := resources.ResolveResultRefs(pipelineRunFacts.State, nextRpts)
 
 	resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
 	// After we apply Task Results, we may be able to evaluate more
@@ -761,6 +759,17 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}
 		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
 			continue
+		}
+
+		// Verify that a pipeline that emits results produces those results
+		taskRunResults := pipelineRunFacts.State.GetTaskRunsResults()
+		if len(taskRunResults) > 0 {
+			err := verifyResultsProduced(pipelineRunFacts.State, taskRunResults)
+			if err != nil {
+				logger.Errorf("Failed to produce results in the pipelinerun %q with error %v", pr.Name, err)
+				pr.Status.MarkFailed(ReasonResultMissing, err.Error())
+				return controller.NewPermanentError(err)
+			}
 		}
 
 		// Validate parameter types in matrix after apply substitutions from Task Results
@@ -1413,6 +1422,32 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 		newChildRefs = append(newChildRefs, *childRefByName[k])
 	}
 	pr.Status.ChildReferences = newChildRefs
+}
+
+// verifyResultsProduced checks that any results defined within a PipelineSpec are actually
+// produced. If the TaskRun that produces a results ends up failing, the result will never
+// be produced so this ensures that all of the results defined are actually emitted.
+func verifyResultsProduced(pipelineRunState resources.PipelineRunState, taskRunResults map[string][]v1beta1.TaskRunResult) error {
+	if len(taskRunResults) > 0 {
+		for _, rpt := range pipelineRunState {
+			name := rpt.PipelineTask.Name
+			if rpt.PipelineTask.TaskSpec != nil && len(rpt.PipelineTask.TaskSpec.TaskSpec.Results) > 0 {
+				for _, result := range rpt.PipelineTask.TaskSpec.TaskSpec.Results {
+					if taskResults, ok := taskRunResults[name]; ok {
+						for _, taskResult := range taskResults {
+							if taskResult.Name != result.Name {
+								err := fmt.Errorf("Could not find result with name %s for task %s", result.Name, rpt.PipelineTask.Name)
+								return err
+							}
+						}
+					}
+				}
+			}
+
+		}
+	}
+
+	return nil
 }
 
 // conditionFromVerificationResult returns the ConditionTrustedResourcesVerified condition based on the VerificationResult, err is returned when the VerificationResult type is VerificationError
