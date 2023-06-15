@@ -167,27 +167,29 @@ func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
 }
 
 // ApplyTaskResults applies the ResolvedResultRef to each PipelineTask.Params and Pipeline.WhenExpressions in targets
-func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResultRefs) {
+func ApplyTaskResults(targets []*v1beta1.PipelineTask, resolvedResultRefs ResolvedResultRefs) {
 	stringReplacements := resolvedResultRefs.getStringReplacements()
 	arrayReplacements := resolvedResultRefs.getArrayReplacements()
 	objectReplacements := resolvedResultRefs.getObjectReplacements()
 	for _, resolvedPipelineRunTask := range targets {
-		if resolvedPipelineRunTask.PipelineTask != nil {
-			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
+		if resolvedPipelineRunTask != nil {
+			pipelineTask := resolvedPipelineRunTask.DeepCopy()
 			pipelineTask.Params = pipelineTask.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			if pipelineTask.IsMatrixed() {
+				fmt.Println("BEFORE", pipelineTask.Matrix.Params)
 				// String replacements from string, array or object results or array replacements from array results are supported
 				pipelineTask.Matrix.Params = pipelineTask.Matrix.Params.ReplaceVariables(stringReplacements, arrayReplacements, nil)
 				for i := range pipelineTask.Matrix.Include {
 					// matrix include parameters can only be type string
 					pipelineTask.Matrix.Include[i].Params = pipelineTask.Matrix.Include[i].Params.ReplaceVariables(stringReplacements, nil, nil)
 				}
+				fmt.Println("AFTER", pipelineTask.Matrix.Params)
 			}
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceVariables(stringReplacements, arrayReplacements)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
 				pipelineTask.TaskRef.Params = pipelineTask.TaskRef.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
 			}
-			resolvedPipelineRunTask.PipelineTask = pipelineTask
+			resolvedPipelineRunTask = pipelineTask
 		}
 	}
 }

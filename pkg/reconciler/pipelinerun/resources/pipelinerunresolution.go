@@ -389,14 +389,14 @@ func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(facts *PipelineRu
 // reason for skipping the task, and applies result references if found
 func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) && t.hasResultReferences() {
-		resolvedResultRefs, pt, err := ResolveResultRefs(facts.State, PipelineRunState{t})
+		resolvedResultRefs, pt, err := ResolveResultRef(facts.State, t.PipelineTask)
 		rpt := facts.State.ToMap()[pt]
 		if rpt != nil {
 			if err != nil && (t.IsFinalTask(facts) || rpt.Skip(facts).SkippingReason == v1beta1.WhenExpressionsSkip) {
 				return true
 			}
 		}
-		ApplyTaskResults(PipelineRunState{t}, resolvedResultRefs)
+		ApplyTaskResults([]*v1beta1.PipelineTask{t.PipelineTask}, resolvedResultRefs)
 		facts.ResetSkippedCache()
 	}
 	return false
@@ -554,11 +554,11 @@ func ResolvePipelineTask(
 	}
 	rpt.CustomTask = rpt.PipelineTask.TaskRef.IsCustomTask() || rpt.PipelineTask.TaskSpec.IsCustomTask()
 	numCombinations := 1
-	// We want to resolve all of the result references and ignore any errors at this point since there could be
-	// instances where result references are missing here, but will be later skipped or resolved in a subsequent
-	// TaskRun. The final validation is handled in skipBecauseResultReferencesAreMissing.
-	resolvedResultRefs, _, _ := ResolveResultRefs(pst, PipelineRunState{&rpt})
-	ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
+	// // We want to resolve all of the result references and ignore any errors at this point since there could be
+	// // instances where result references are missing here, but will be later skipped or resolved in a subsequent
+	// // TaskRun. The final validation is handled in skipBecauseResultReferencesAreMissing.
+	// resolvedResultRefs, _, _ := ResolveResultRefs(pst, PipelineRunState{&rpt})
+	// ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
 
 	if rpt.PipelineTask.IsMatrixed() {
 		numCombinations = rpt.PipelineTask.Matrix.CountCombinations()
