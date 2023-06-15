@@ -547,24 +547,12 @@ func ResolvePipelineTask(
 	getTaskRun resources.GetTaskRun,
 	getRun GetRun,
 	pipelineTask v1beta1.PipelineTask,
-	pst PipelineRunState,
 ) (*ResolvedPipelineTask, error) {
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
 	}
 	rpt.CustomTask = rpt.PipelineTask.TaskRef.IsCustomTask() || rpt.PipelineTask.TaskSpec.IsCustomTask()
 	numCombinations := 1
-
-	// TODO: TRY MOVING THIS INTO ResolvePipelineSTATE
-	// question: instead of passing in the pipelinerunState struct to ResolvePipelineTask,
-	// could we resolve the references right after we call ResolvedPipelineTask but before we append it to the pipelinerun state i.e. after line 379
-	
-	// We want to resolve all of the result references and ignore any errors at this point since there could be
-	// instances where result references are missing here, but will be later skipped or resolved in a subsequent
-	// TaskRun. The final validation is handled in skipBecauseResultReferencesAreMissing.
-	resolvedResultRefs, _, err := ResolveResultRefs(pst, PipelineRunState{&rpt})
-	fmt.Println(err)
-	ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
 
 	if rpt.PipelineTask.IsMatrixed() {
 		numCombinations = rpt.PipelineTask.Matrix.CountCombinations()

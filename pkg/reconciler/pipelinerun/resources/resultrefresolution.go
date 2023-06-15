@@ -47,6 +47,8 @@ func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelin
 
 // ResolveResultRefs resolves any ResultReference that are found in the target ResolvedPipelineTask
 func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunState) (ResolvedResultRefs, string, error) {
+	fmt.Println("pipelineRunState?", pipelineRunState)
+	fmt.Println("targets?", targets)
 	var allResolvedResultRefs ResolvedResultRefs
 	for _, target := range targets {
 		resolvedResultRefs, pt, err := convertToResultRefs(pipelineRunState, target)

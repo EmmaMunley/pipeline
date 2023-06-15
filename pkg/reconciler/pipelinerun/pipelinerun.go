@@ -349,7 +349,6 @@ func (c *Reconciler) resolvePipelineState(
 			},
 			getCustomRunFunc,
 			task,
-			pst,
 		)
 		if err != nil {
 			if tresources.IsGetTaskErrTransient(err) {
@@ -378,7 +377,16 @@ func (c *Reconciler) resolvePipelineState(
 				return nil, controller.NewPermanentError(err)
 			}
 		}
+		// We want to resolve all of the result references and ignore any errors at this point since there could be
+		// instances where result references are missing here, but will be later skipped or resolved in a subsequent
+		// TaskRun. The final validation is handled in skipBecauseResultReferencesAreMissing.
+		resolvedResultRefs, _, _ := resources.ResolveResultRefs(pst, resources.PipelineRunState{resolvedTask})
+		resources.ApplyTaskResults(resources.PipelineRunState{resolvedTask}, resolvedResultRefs)
+
+		fmt.Println("resolvedTask?", resolvedTask)
+		fmt.Println("pst before?", pst)
 		pst = append(pst, resolvedTask)
+		fmt.Println("pst after?", pst)
 	}
 	return pst, nil
 }
