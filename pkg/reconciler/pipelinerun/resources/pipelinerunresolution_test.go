@@ -191,6 +191,47 @@ var task = &v1beta1.Task{
 	},
 }
 
+var taskWithMissingResults = &v1beta1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "task-with-missing-results",
+	},
+	Spec: v1beta1.TaskSpec{
+		Results: []v1beta1.TaskResult{{
+			Name: "result1",
+			Type: "string",
+		}, {
+			Name: "result2",
+			Type: "string",
+		}},
+		Steps: []v1beta1.Step{{
+			Name:    "failing-step",
+			OnError: v1beta1.Continue,
+			Image:   "busybox",
+			Script:  "echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)",
+		}},
+	},
+}
+
+var taskWithMissingResultReferences = &v1beta1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "task-with-missing-result-references",
+	},
+	Spec: v1beta1.TaskSpec{
+		Params: []v1beta1.ParamSpec{{
+			Name: "param1",
+			Type: "string",
+		}, {
+			Name: "param2",
+			Type: "string",
+		}},
+		Steps: []v1beta1.Step{{
+			Name:   "exit-step",
+			Image:  "busybox",
+			Script: "exit-0",
+		}},
+	},
+}
+
 var trs = []v1beta1.TaskRun{{
 	ObjectMeta: metav1.ObjectMeta{
 		Namespace: "namespace",
@@ -3818,6 +3859,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		name string
 		pt   v1beta1.PipelineTask
 		want *ResolvedPipelineTask
+		rpt  ResolvedPipelineTask
 	}{{
 		name: "task with matrix - single parameter",
 		pt:   pts[0],
