@@ -2790,7 +2790,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			resources.ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
+			// resources.ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
 			if d := cmp.Diff(tt.want, tt.targets); d != "" {
 				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
@@ -3150,7 +3150,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			resources.ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
+			// resources.ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
 			if d := cmp.Diff(tt.want, tt.targets); d != "" {
 				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}

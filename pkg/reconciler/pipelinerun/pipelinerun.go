@@ -341,6 +341,17 @@ func (c *Reconciler) resolvePipelineState(
 			return r, nil
 		}
 
+		// We want to resolve all of the result references and ignore any errors at this point since there could be
+		// instances where result references are missing here, but will be later skipped or resolved in a subsequent
+		// TaskRun. The final validation is handled in skipBecauseResultReferencesAreMissing.
+		resolvedResultRefs, _, err := resources.ResolveResultRef(pst, &task)
+		fmt.Println("err?", err)
+		fmt.Println("resolvedResultRefs?", resolvedResultRefs)
+		fmt.Println("TASK 1?", task)
+		resources.ApplyTaskResults([]*v1beta1.PipelineTask{&task}, resolvedResultRefs)
+		arg1 := []*v1beta1.PipelineTask{&task}
+		fmt.Println("ARG1", arg1)
+		fmt.Println("TASK 2?", task)
 		resolvedTask, err := resources.ResolvePipelineTask(ctx,
 			*pr,
 			fn,
@@ -377,12 +388,6 @@ func (c *Reconciler) resolvePipelineState(
 				return nil, controller.NewPermanentError(err)
 			}
 		}
-		// We want to resolve all of the result references and ignore any errors at this point since there could be
-		// instances where result references are missing here, but will be later skipped or resolved in a subsequent
-		// TaskRun. The final validation is handled in skipBecauseResultReferencesAreMissing.
-		resolvedResultRefs, _, _ := resources.ResolveResultRefs(pst, resources.PipelineRunState{resolvedTask})
-		resources.ApplyTaskResults(resources.PipelineRunState{resolvedTask}, resolvedResultRefs)
-
 		fmt.Println("resolvedTask?", resolvedTask)
 		fmt.Println("pst before?", pst)
 		pst = append(pst, resolvedTask)
@@ -669,6 +674,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	if err := c.runNextSchedulableTask(ctx, pr, pipelineRunFacts); err != nil {
 		return err
 	}
+	fmt.Println("pr", pr)
 
 	// Reset the skipped status to trigger recalculation
 	pipelineRunFacts.ResetSkippedCache()
@@ -743,12 +749,12 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		// Before creating TaskRun for scheduled final task, check if it's consuming a task result
 		// Resolve and apply task result wherever applicable, report warning in case resolution fails
 		for _, rpt := range fNextRpts {
-			resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.State, rpt)
+			resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.State, rpt.PipelineTask)
 			if err != nil {
 				logger.Infof("Final task %q is not executed as it could not resolve task params for %q: %v", rpt.PipelineTask.Name, pr.Name, err)
 				continue
 			}
-			resources.ApplyTaskResults(resources.PipelineRunState{rpt}, resolvedResultRefs)
+			resources.ApplyTaskResults([]*v1beta1.PipelineTask{rpt.PipelineTask}, resolvedResultRefs)
 			nextRpts = append(nextRpts, rpt)
 		}
 	}

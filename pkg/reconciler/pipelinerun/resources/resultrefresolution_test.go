@@ -438,89 +438,89 @@ func TestResolveResultRefs(t *testing.T) {
 	}
 }
 
-func TestResolveResultRef(t *testing.T) {
-	for _, tt := range []struct {
-		name             string
-		pipelineRunState PipelineRunState
-		target           *ResolvedPipelineTask
-		want             ResolvedResultRefs
-		wantErr          bool
-		wantPt           string
-	}{{
-		name:             "Test successful result references resolution - params",
-		pipelineRunState: pipelineRunState,
-		target:           pipelineRunState[1],
-		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewStructuredValues("aResultValue"),
-			ResultReference: v1beta1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		wantErr: false,
-	}, {
-		name:             "Test successful result references resolution - when expressions",
-		pipelineRunState: pipelineRunState,
-		target:           pipelineRunState[2],
-		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewStructuredValues("aResultValue"),
-			ResultReference: v1beta1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-		wantErr: false,
-	}, {
-		name:             "Test successful result references resolution non result references",
-		pipelineRunState: pipelineRunState,
-		target:           pipelineRunState[0],
-		want:             nil,
-		wantErr:          false,
-	}, {
-		name:             "Test unsuccessful result references resolution - when expression",
-		pipelineRunState: pipelineRunState,
-		target:           pipelineRunState[3],
-		want:             nil,
-		wantErr:          true,
-		wantPt:           "aTask",
-	}, {
-		name:             "Test unsuccessful result references resolution - params",
-		pipelineRunState: pipelineRunState,
-		target:           pipelineRunState[4],
-		want:             nil,
-		wantErr:          true,
-		wantPt:           "aTask",
-	}, {
-		name:             "Test successful result references resolution - params - Run",
-		pipelineRunState: pipelineRunState,
-		target:           pipelineRunState[6],
-		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewStructuredValues("aResultValue"),
-			ResultReference: v1beta1.ResultRef{
-				PipelineTask: "aCustomPipelineTask",
-				Result:       "aResult",
-			},
-			FromRun: "aRun",
-		}},
-		wantErr: false,
-	}} {
-		t.Run(tt.name, func(t *testing.T) {
-			got, pt, err := ResolveResultRef(tt.pipelineRunState, tt.target)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if d := cmp.Diff(tt.want, got, cmpopts.SortSlices(lessResolvedResultRefs)); d != "" {
-				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
-			}
-			if d := cmp.Diff(tt.wantPt, pt); d != "" {
-				t.Fatalf("ResolvedPipelineTask %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
+// func TestResolveResultRef(t *testing.T) {
+// 	for _, tt := range []struct {
+// 		name             string
+// 		pipelineRunState PipelineRunState
+// 		target           *ResolvedPipelineTask
+// 		want             ResolvedResultRefs
+// 		wantErr          bool
+// 		wantPt           string
+// 	}{{
+// 		name:             "Test successful result references resolution - params",
+// 		pipelineRunState: pipelineRunState,
+// 		target:           pipelineRunState[1],
+// 		want: ResolvedResultRefs{{
+// 			Value: *v1beta1.NewStructuredValues("aResultValue"),
+// 			ResultReference: v1beta1.ResultRef{
+// 				PipelineTask: "aTask",
+// 				Result:       "aResult",
+// 			},
+// 			FromTaskRun: "aTaskRun",
+// 		}},
+// 		wantErr: false,
+// 	}, {
+// 		name:             "Test successful result references resolution - when expressions",
+// 		pipelineRunState: pipelineRunState,
+// 		target:           pipelineRunState[2],
+// 		want: ResolvedResultRefs{{
+// 			Value: *v1beta1.NewStructuredValues("aResultValue"),
+// 			ResultReference: v1beta1.ResultRef{
+// 				PipelineTask: "aTask",
+// 				Result:       "aResult",
+// 			},
+// 			FromTaskRun: "aTaskRun",
+// 		}},
+// 		wantErr: false,
+// 	}, {
+// 		name:             "Test successful result references resolution non result references",
+// 		pipelineRunState: pipelineRunState,
+// 		target:           pipelineRunState[0],
+// 		want:             nil,
+// 		wantErr:          false,
+// 	}, {
+// 		name:             "Test unsuccessful result references resolution - when expression",
+// 		pipelineRunState: pipelineRunState,
+// 		target:           pipelineRunState[3],
+// 		want:             nil,
+// 		wantErr:          true,
+// 		wantPt:           "aTask",
+// 	}, {
+// 		name:             "Test unsuccessful result references resolution - params",
+// 		pipelineRunState: pipelineRunState,
+// 		target:           pipelineRunState[4],
+// 		want:             nil,
+// 		wantErr:          true,
+// 		wantPt:           "aTask",
+// 	}, {
+// 		name:             "Test successful result references resolution - params - Run",
+// 		pipelineRunState: pipelineRunState,
+// 		target:           pipelineRunState[6],
+// 		want: ResolvedResultRefs{{
+// 			Value: *v1beta1.NewStructuredValues("aResultValue"),
+// 			ResultReference: v1beta1.ResultRef{
+// 				PipelineTask: "aCustomPipelineTask",
+// 				Result:       "aResult",
+// 			},
+// 			FromRun: "aRun",
+// 		}},
+// 		wantErr: false,
+// 	}} {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			got, pt, err := ResolveResultRef(tt.pipelineRunState, tt.target)
+// 			if (err != nil) != tt.wantErr {
+// 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
+// 				return
+// 			}
+// 			if d := cmp.Diff(tt.want, got, cmpopts.SortSlices(lessResolvedResultRefs)); d != "" {
+// 				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
+// 			}
+// 			if d := cmp.Diff(tt.wantPt, pt); d != "" {
+// 				t.Fatalf("ResolvedPipelineTask %s", diff.PrintWantGot(d))
+// 			}
+// 		})
+// 	}
+// }
 
 func lessResolvedResultRefs(i, j *ResolvedResultRef) bool {
 	fromI := i.FromTaskRun

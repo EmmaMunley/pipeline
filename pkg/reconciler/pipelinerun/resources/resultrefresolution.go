@@ -37,7 +37,7 @@ type ResolvedResultRef struct {
 }
 
 // ResolveResultRef resolves any ResultReference that are found in the target ResolvedPipelineTask
-func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
+func ResolveResultRef(pipelineRunState PipelineRunState, target *v1beta1.PipelineTask) (ResolvedResultRefs, string, error) {
 	resolvedResultRefs, pt, err := convertToResultRefs(pipelineRunState, target)
 	if err != nil {
 		return nil, pt, err
@@ -47,11 +47,9 @@ func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelin
 
 // ResolveResultRefs resolves any ResultReference that are found in the target ResolvedPipelineTask
 func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunState) (ResolvedResultRefs, string, error) {
-	fmt.Println("pipelineRunState?", pipelineRunState)
-	fmt.Println("targets?", targets)
 	var allResolvedResultRefs ResolvedResultRefs
 	for _, target := range targets {
-		resolvedResultRefs, pt, err := convertToResultRefs(pipelineRunState, target)
+		resolvedResultRefs, pt, err := convertToResultRefs(pipelineRunState, target.PipelineTask)
 		if err != nil {
 			return nil, pt, err
 		}
@@ -107,9 +105,9 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 // found they are resolved to a value by searching pipelineRunState. The list of resolved
 // references are returned. If an error is encountered due to an invalid result reference
 // then a nil list and error is returned instead.
-func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
+func convertToResultRefs(pipelineRunState PipelineRunState, target *v1beta1.PipelineTask) (ResolvedResultRefs, string, error) {
 	var resolvedResultRefs ResolvedResultRefs
-	for _, ref := range v1beta1.PipelineTaskResultRefs(target.PipelineTask) {
+	for _, ref := range v1beta1.PipelineTaskResultRefs(target) {
 		resolved, pt, err := resolveResultRef(pipelineRunState, ref)
 		if err != nil {
 			return nil, pt, err

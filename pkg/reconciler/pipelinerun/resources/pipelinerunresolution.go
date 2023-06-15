@@ -389,14 +389,14 @@ func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(facts *PipelineRu
 // reason for skipping the task, and applies result references if found
 func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) && t.hasResultReferences() {
-		resolvedResultRefs, pt, err := ResolveResultRefs(facts.State, PipelineRunState{t})
+		resolvedResultRefs, pt, err := ResolveResultRef(facts.State, t.PipelineTask)
 		rpt := facts.State.ToMap()[pt]
 		if rpt != nil {
 			if err != nil && (t.IsFinalTask(facts) || rpt.Skip(facts).SkippingReason == v1beta1.WhenExpressionsSkip) {
 				return true
 			}
 		}
-		ApplyTaskResults(PipelineRunState{t}, resolvedResultRefs)
+		ApplyTaskResults([]*v1beta1.PipelineTask{t.PipelineTask}, resolvedResultRefs)
 		facts.ResetSkippedCache()
 	}
 	return false
@@ -551,11 +551,14 @@ func ResolvePipelineTask(
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
 	}
+	fmt.Println("pipelineTask?", pipelineTask)
 	rpt.CustomTask = rpt.PipelineTask.TaskRef.IsCustomTask() || rpt.PipelineTask.TaskSpec.IsCustomTask()
 	numCombinations := 1
 
 	if rpt.PipelineTask.IsMatrixed() {
+		fmt.Println(rpt.PipelineTask.Matrix)
 		numCombinations = rpt.PipelineTask.Matrix.CountCombinations()
+		fmt.Println(numCombinations)
 	}
 	if rpt.IsCustomTask() {
 		rpt.CustomRunNames = getNamesOfCustomRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)
