@@ -665,7 +665,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	if err := c.runNextSchedulableTask(ctx, pr, pipelineRunFacts); err != nil {
 		return err
 	}
-
+	fmt.Println("TEST 1")
+	results := pipelineRunFacts.State.GetTaskRunsResults()
+	fmt.Println("Results 1", results)
 	// Reset the skipped status to trigger recalculation
 	pipelineRunFacts.ResetSkippedCache()
 

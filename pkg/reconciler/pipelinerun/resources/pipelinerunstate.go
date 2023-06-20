@@ -157,6 +157,15 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1.TaskRunResult
 		if !rpt.isSuccessful() {
 			continue
 		}
+		result := rpt.TaskRuns[i].Status.Results
+		result["matrix-include"] = "IMAGE1SHA"
+
+		result["matrix-include"] = "IMAGE2SHA"
+
+		for i, taskRun := range rpt.TaskRuns {
+
+		}
+		fmt.Println("result?", result)
 		// Currently a Matrix cannot produce results so this is for a singular TaskRun
 		if len(rpt.TaskRuns) == 1 {
 			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Results

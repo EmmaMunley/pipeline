@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: explicit-combos-with-results
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: build
+        matrix:
+          include:
+            - name: build-1
+              params:
+                - name: IMAGE
+                  value: image-1
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile1
+            - name: build-2
+              params:
+                - name: IMAGE
+                  value: image-2
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile2
+            - name: build-3
+              params:
+                - name: IMAGE
+                  value: image-3
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile3
+        taskSpec:
+          params:
+            - name: IMAGE
+            - name: DOCKERFILE
+          results:
+            - name: IMAGE-DIGEST
+            - name: IMAGE-NAME
+          steps:
+            - name: produce-results
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo -n "$(params.IMAGE)" | sha256sum | tee $(results.IMAGE-DIGEST.path)
+                echo -n "$(params.IMAGE)" | tee $(results.IMAGE-NAME.path)
