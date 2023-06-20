@@ -102,6 +102,9 @@ func wrongTypeParamsNames(params []v1.Param, matrix v1.Params, neededParamsTypes
 			// passed to the task that aren't being used.
 			continue
 		}
+		if neededParamsTypes[param.Name] == v1.ParamTypeArray {
+			continue
+		}
 		// Matrix param replacements must be of type String
 		if neededParamsTypes[param.Name] != v1.ParamTypeString {
 			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)

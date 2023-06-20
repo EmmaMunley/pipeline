@@ -1,0 +1,82 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echomatrixlength
+spec:
+  params:
+    - name: matrixlength
+      type: string
+      steps:
+        - name: echo
+          image: alpine
+          script: echo $(params.matrixlength)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echomatrixresultslength
+spec:
+  params:
+    - name: matrixresultslength
+      type: string
+      steps:
+        - name: echo
+          image: alpine
+          script: echo $(params.matrixresultslength)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrix-emitting-results
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: matrix-emitting-results
+        matrix:
+          include:
+            - name: build-1
+              params:
+                - name: IMAGE
+                  value: image-1
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile1
+            - name: build-2
+              params:
+                - name: IMAGE
+                  value: image-2
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile2
+            - name: build-3
+              params:
+                - name: IMAGE
+                  value: image-3
+                - name: DOCKERFILE
+                  value: path/to/Dockerfile3
+        taskSpec:
+          params:
+            - name: IMAGE
+            - name: DIGEST
+              default: ""
+          results:
+            - name: IMAGE-DIGEST
+          steps:
+            - name: produce-image-digest
+              image: bash:latest
+              script: |
+                echo "Building image for $(params.IMAGE)"
+                echo -n "$(params.IMAGE)" | sha256sum | tee $(results.IMAGE-DIGEST.path)
+      - name: matrixed-echo-length
+        params:
+          - name: matrixlength
+            value: $(tasks.matrix-emitting-results.matrix.length)
+        taskRef:
+          name: echomatrixlength
+          kind: Task
+      - name: matrixed-echo-results-length
+        params:
+          - name: matrixresultslength
+            value: $(tasks.matrix-emitting-results.matrix.IMAGE-DIGEST.length)
+        taskRef:
+          name: echomatrixresultslength
+          kind: Task

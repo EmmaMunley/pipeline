@@ -1,0 +1,100 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echostringurl
+spec:
+  params:
+    - name: url
+      type: string
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.url)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echoarrayurl
+spec:
+  params:
+    - name: url
+      type: array
+  steps:
+    - name: use-environments
+      image: bash:latest
+      args: ["$(params.url[*])"]
+      script: |
+        for arg in "$@"; do
+          echo "URL: $arg"
+        done
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: taskwithresults
+spec:
+  params:
+    - name: platform
+      default: ""
+    - name: browser
+      default: ""
+  results:
+    - name: report-url
+      type: string
+  steps:
+    - name: produce-report-url
+      image: alpine
+      script: |
+        echo "Running tests on $(params.platform)-$(params.browser)"
+        echo -n "https://api.example/get-report/$(params.platform)-$(params.browser)" | tee $(results.report-url.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: platforms-with-results
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: matrix-emitting-results
+        matrix:
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+            - name: browser
+              value:
+                - chrome
+                - safari
+                - firefox
+        taskRef:
+          name: taskwithresults
+          kind: Task
+      - name: task-consuming-results
+        taskRef:
+          name: echoarrayurl
+          kind: Task
+        params:
+          - name: url
+            value: $(tasks.matrix-emitting-results.results.report-url[*])
+      - name: task-get-linux-results
+        taskRef:
+          name: echoarrayurl
+          kind: Task
+        params:
+          - name: url
+            value:
+              - $(tasks.matrix-emitting-results.results.report-url[0])
+              - $(tasks.matrix-emitting-results.results.report-url[3])
+              - $(tasks.matrix-emitting-results.results.report-url[6])
+      - name: matrix-consuming-results-1
+        taskRef:
+          name: echostringurl
+          kind: Task
+        matrix:
+          params:
+            - name: url
+              value: $(tasks.matrix-emitting-results.results.report-url[0])

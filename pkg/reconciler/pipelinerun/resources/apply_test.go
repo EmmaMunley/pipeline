@@ -3326,7 +3326,7 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			got := resources.ApplyPipelineTaskContexts(&tc.pt)
+			got := resources.ApplyPipelineTaskContexts(&tc.pt, v1.PipelineRunStatus{})
 			if d := cmp.Diff(&tc.want, got); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}

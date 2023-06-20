@@ -157,12 +157,30 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1.TaskRunResult
 		if !rpt.isSuccessful() {
 			continue
 		}
-		// Currently a Matrix cannot produce results so this is for a singular TaskRun
-		if len(rpt.TaskRuns) == 1 {
+		if rpt.PipelineTask.IsMatrixed() {
+			taskRunResults := convertResultsMapToTaskRunResults(rpt.ResultsCache)
+			results[rpt.PipelineTask.Name] = taskRunResults
+		} else {
 			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Results
 		}
 	}
 	return results
+}
+
+func convertResultsMapToTaskRunResults(resultsMap map[string][]string) []v1.TaskRunResult {
+	var taskRunResults []v1.TaskRunResult
+	for result, val := range resultsMap {
+		taskRunResult := v1.TaskRunResult{
+			Name: result,
+			Type: v1.ResultsTypeArray,
+			Value: v1.ParamValue{
+				Type:     v1.ParamTypeArray,
+				ArrayVal: val,
+			},
+		}
+		taskRunResults = append(taskRunResults, taskRunResult)
+	}
+	return taskRunResults
 }
 
 // GetRunsResults returns a map of all successfully completed Runs in the state, with the pipeline task name as the key

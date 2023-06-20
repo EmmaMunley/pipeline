@@ -150,16 +150,72 @@ func ApplyContexts(spec *v1.PipelineSpec, pipelineName string, pr *v1.PipelineRu
 	return ApplyReplacements(spec, GetContextReplacements(pipelineName, pr), map[string][]string{}, map[string]map[string]string{})
 }
 
+// looksLikeMatrixContextVar attempts to check if param contains any matrix context variables
+func looksLikeMatrixContextVar(params v1.Params) bool {
+	for _, param := range params {
+		if expressions, ok := v1.GetVarSubstitutionExpressionsForParam(param); ok {
+			for _, expression := range expressions {
+				subExpressions := strings.Split(expression, ".")
+				if subExpressions[2] == "matrix" && subExpressions[len(subExpressions)-1] == "length" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// parseParams parses "task name", "result name" from a Matrix Context Variable
+// Valid Example 1:
+// - Input: tasks.myTask.matrix.length
+// - Output: "myTask", ""
+// Valid Example 2:
+// - Input: tasks.myTask.matrix.ResultName.length
+// - Output: "myTask", "ResultName"
+func parseParams(params v1.Params) (string, string) {
+	for _, param := range params {
+		if expressions, ok := v1.GetVarSubstitutionExpressionsForParam(param); ok {
+			for _, expression := range expressions {
+				subExpressions := strings.Split(expression, ".")
+				pipelineTaskName := subExpressions[1]
+				if len(subExpressions) == 4 {
+					return pipelineTaskName, ""
+				} else if len(subExpressions) == 5 {
+					return pipelineTaskName, subExpressions[3]
+				}
+			}
+		}
+	}
+	return "", ""
+}
+
 // ApplyPipelineTaskContexts applies the substitution from $(context.pipelineTask.*) with the specified values.
 // Uses "0" as a default if a value is not available.
-func ApplyPipelineTaskContexts(pt *v1.PipelineTask) *v1.PipelineTask {
+func ApplyPipelineTaskContexts(pt *v1.PipelineTask, pipelineRunStatus v1.PipelineRunStatus) *v1.PipelineTask {
 	pt = pt.DeepCopy()
+	var pipelineTaskName string
+	var resultName string
+	var matrixLength int
+	pt.Params = append(pt.Params, pt.Matrix.GetAllParams()...)
+
+	if looksLikeMatrixContextVar(pt.Params) {
+		pipelineTaskName, resultName = parseParams(pt.Params)
+		// find the referenced pipelineTask to count the matrix combinations
+		for _, task := range pipelineRunStatus.PipelineSpec.Tasks {
+			if task.Name == pipelineTaskName {
+				matrixLength = task.Matrix.CountCombinations()
+			}
+		}
+	}
+
 	replacements := map[string]string{
-		"context.pipelineTask.retries": strconv.Itoa(pt.Retries),
+		"context.pipelineTask.retries":                                    strconv.Itoa(pt.Retries),
+		"tasks." + pipelineTaskName + ".matrix.length":                    strconv.Itoa(matrixLength),
+		"tasks." + pipelineTaskName + ".matrix." + resultName + ".length": strconv.Itoa(len(pipelineRunStatus.ChildReferences)),
 	}
 	pt.Params = pt.Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 	if pt.IsMatrixed() {
-		pt.Matrix.Params = pt.Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
+		pt.Matrix.Params = pt.Matrix.Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 		for i := range pt.Matrix.Include {
 			pt.Matrix.Include[i].Params = pt.Matrix.Include[i].Params.ReplaceVariables(replacements, map[string][]string{}, map[string]map[string]string{})
 		}
