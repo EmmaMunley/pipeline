@@ -227,6 +227,11 @@ type TaskRunStatusFields struct {
 	// +listType=atomic
 	Results []TaskRunResult `json:"results,omitempty"`
 
+	// Results are the list of results written out by the task's containers
+	// +optional
+	// +listType=atomic
+	MatrixedResults MatrixedRunResultMapping `json:"matrixedresults,omitempty"`
+
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
 	// +listType=atomic

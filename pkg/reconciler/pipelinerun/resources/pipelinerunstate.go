@@ -146,10 +146,18 @@ func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) 
 	return adjustedStartTime.DeepCopy()
 }
 
+type newResult struct {
+	name    string
+	results []v1.TaskRunResult
+}
+
+type newResults []newResult
+
 // GetTaskRunsResults returns a map of all successfully completed TaskRuns in the state, with the pipeline task name as
 // the key and the results from the corresponding TaskRun as the value. It only includes tasks which have completed successfully.
 func (state PipelineRunState) GetTaskRunsResults() map[string][]v1.TaskRunResult {
 	results := make(map[string][]v1.TaskRunResult)
+
 	for _, rpt := range state {
 		if rpt.IsCustomTask() {
 			continue
@@ -157,21 +165,48 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1.TaskRunResult
 		if !rpt.isSuccessful() {
 			continue
 		}
-		// result := rpt.TaskRuns[i].Status.Results
-		// result["matrix-include"] = "IMAGE1SHA"
-
-		// result["matrix-include"] = "IMAGE2SHA"
-
-		// for i, taskRun := range rpt.TaskRuns {
-
-		// }
-		// fmt.Println("result?", result)
-		// Currently a Matrix cannot produce results so this is for a singular TaskRun
-		if len(rpt.TaskRuns) == 1 {
-			results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Results
-		}
+		results[rpt.PipelineTask.Name] = rpt.TaskRuns[0].Status.Results
 	}
+	fmt.Println("results", results)
 	return results
+}
+
+// GetTaskRunsResults returns a map of all successfully completed TaskRuns in the state, with the pipeline task name as
+// the key and the results from the corresponding TaskRun as the value. It only includes tasks which have completed successfully.
+func (state PipelineRunState) GetMatrixedTaskRunsResults() map[string]map[string][]string {
+	resultsMap := make(map[string][]string)
+	matrixedResults := make(map[string]map[string][]string)
+
+	for _, rpt := range state {
+		if rpt.IsCustomTask() {
+			continue
+		}
+		if !rpt.isSuccessful() {
+			continue
+		}
+
+		for _, taskRun := range rpt.TaskRuns {
+			fmt.Println("taskRun", taskRun)
+			results := taskRun.Status.Results
+			fmt.Println("results?", results)
+
+			for _, result := range results {
+				if _, ok := resultsMap[result.Name]; ok {
+					resultsMap[result.Name] = append(resultsMap[result.Name], result.Value.StringVal)
+				} else {
+					resultsMap[result.Name] = []string{result.Value.StringVal}
+				}
+			}
+		}
+		fmt.Println("resultsMap?", resultsMap)
+		matrixedResults[rpt.PipelineTask.Name] = resultsMap
+		// MATRIXED
+		// RESULTS
+		// [[name: IMAGE-DIGEST, [SHA1, SHA2, SHA3]], [name: IMAGE-NAME, [IMAGE-1, IMAGE-2, IMAGE-3]]]
+
+	}
+	fmt.Println("matrixedResults", matrixedResults)
+	return matrixedResults
 }
 
 // GetRunsResults returns a map of all successfully completed Runs in the state, with the pipeline task name as the key

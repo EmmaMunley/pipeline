@@ -34,6 +34,17 @@ type TaskResult struct {
 	Description string `json:"description,omitempty"`
 }
 
+type TaskRunResults struct {
+	// Name the given name
+	Name string `json:"name"`
+
+	// Results is the list of TaskRunResults
+	Results []TaskRunResult
+}
+
+// TaskRunResultMapping
+type MatrixedRunResultMapping map[string][]string
+
 // TaskRunResult used to describe the results of a task
 type TaskRunResult struct {
 	// Name the given name
