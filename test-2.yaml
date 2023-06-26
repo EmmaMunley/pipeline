@@ -1,0 +1,37 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: mytask-2
+spec:
+  params:
+    - name: foo
+  results:
+    - name: bar
+  steps:
+    - name: produce-results
+      image: alpine
+      script: |
+        echo -n "$(params.foo)" | sha256sum | tee $(results.bar.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: explicit-combos-with-results
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    results:
+      - name: output
+        value: $(tasks.foo-to-bar.results.bar)
+    tasks:
+      - name: foo-to-bar
+        matrix:
+          params:
+            - name: foo
+              value:
+                - a
+                - b
+                - c
+        taskRef:
+          name: mytask-2
+          kind: Task
