@@ -669,8 +669,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	results := pipelineRunFacts.State.GetTaskRunsResults()
 	fmt.Println("Results 1", results)
 
-	matrixedResults := pipelineRunFacts.State.GetMatrixedTaskRunsResults()
-``	fmt.Println("matrixedResults 1", matrixedResults)
 	// Reset the skipped status to trigger recalculation
 	pipelineRunFacts.ResetSkippedCache()
 

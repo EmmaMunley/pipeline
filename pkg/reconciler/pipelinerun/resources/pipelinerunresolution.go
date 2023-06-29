@@ -64,6 +64,8 @@ type ResolvedPipelineTask struct {
 	CustomRuns     []*v1beta1.CustomRun
 	PipelineTask   *v1.PipelineTask
 	ResolvedTask   *resources.ResolvedTask
+	Results        []v1.TaskRunResult
+
 }
 
 // isDone returns true only if the task is skipped, succeeded or failed
