@@ -510,10 +510,11 @@ func ResolvePipelineTask(
 	// instances where result references are missing here, but will be later skipped and resolved in
 	// skipBecauseResultReferencesAreMissing. The final validation is handled in CheckMissingResultReferences.
 	resolvedResultRefs, _, _ := ResolveResultRefs(pst, PipelineRunState{&rpt})
+	fmt.Println("resolvedResultRefs 1?", resolvedResultRefs)
 	if err := validateArrayResultsIndex(resolvedResultRefs); err != nil {
 		return nil, err
 	}
-
+	fmt.Println("resolvedResultRefs 2?", resolvedResultRefs)
 	ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
 
 	if rpt.PipelineTask.IsMatrixed() {

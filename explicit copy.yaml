@@ -5,6 +5,9 @@ metadata:
 spec:
   serviceAccountName: "default"
   pipelineSpec:
+    results:
+      name: images
+      value: $(tasks.build.results.IMAGE-NAME)
     tasks:
       - name: build
         matrix:

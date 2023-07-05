@@ -11176,9 +11176,9 @@ spec:
         kind: Task
       params:
         - name: NAME
-          value: $(tasks.matrix-emitting-results.results.IMAGE-NAME)
+          value: $(tasks.matrix-emitting-results.results.IMAGE-NAME[0])
         - name: DIGEST
-          value: $(tasks.matrix-emitting-results.results.IMAGE-DIGEST)
+          value: $(tasks.matrix-emitting-results.results.IMAGE-DIGEST[0])
 `, "p-dag")),
 		trs: []*v1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
@@ -11371,7 +11371,7 @@ spec:
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
 
-			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime,ignoreProvenance, cmpopts.EquateEmpty()); d != "" {
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, ignoreProvenance, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
 		})
