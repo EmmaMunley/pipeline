@@ -64,8 +64,8 @@ type ResolvedPipelineTask struct {
 	CustomRuns     []*v1beta1.CustomRun
 	PipelineTask   *v1.PipelineTask
 	ResolvedTask   *resources.ResolvedTask
-	Results        []v1.TaskRunResult
-
+	ResultsCache   map[string]map[string][]string
+	TaskRunResults []v1.TaskRunResult
 }
 
 // isDone returns true only if the task is skipped, succeeded or failed
@@ -303,6 +303,33 @@ func (t *ResolvedPipelineTask) Skip(facts *PipelineRunFacts) TaskSkipStatus {
 		facts.SkipCache[t.PipelineTask.Name] = t.skip(facts)
 	}
 	return facts.SkipCache[t.PipelineTask.Name]
+}
+
+// SetResults returns true if a PipelineTask will not be run because
+func (t *ResolvedPipelineTask) SetResults(facts *PipelineRunFacts) {
+	if facts.ResultsCache == nil {
+		facts.ResultsCache = make(map[string][]string)
+	}
+	if _, cached := facts.SkipCache[t.PipelineTask.Name]; !cached {
+		facts.SkipCache[t.PipelineTask.Name] = t.skip(facts)
+	}
+
+	for _, taskRun := range t.TaskRuns {
+
+		results := taskRun.Status.Results
+		fmt.Println("results?", results)
+
+		for _, result := range results {
+			if _, cached := facts.ResultsCache[result.Name]; cached {
+				val := result.Value
+				fmt.Println("val", val)
+				facts.ResultsCache[result.Name] = append(facts.ResultsCache[result.Name], result.Value.StringVal)
+			} else {
+				facts.ResultsCache[result.Name] = []string{result.Value.StringVal}
+			}
+		}
+	}
+	fmt.Println("facts.ResultsCache?", facts.ResultsCache)
 }
 
 // skipBecauseWhenExpressionsEvaluatedToFalse confirms that the when expressions have completed evaluating, and

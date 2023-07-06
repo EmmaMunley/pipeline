@@ -11176,9 +11176,9 @@ spec:
         kind: Task
       params:
         - name: NAME
-          value: $(tasks.matrix-emitting-results.results.IMAGE-NAME[2])
+          value: $(tasks.matrix-emitting-results.results.IMAGE-NAME[0])
         - name: DIGEST
-          value: $(tasks.matrix-emitting-results.results.IMAGE-DIGEST[2])
+          value: $(tasks.matrix-emitting-results.results.IMAGE-DIGEST[0])
 `, "p-dag")),
 		trs: []*v1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
@@ -11294,6 +11294,10 @@ status:
             value: image-3
           - name: DOCKERFILE
             value: path/to/Dockerfile3
+      name: matrix-consuming-results
+      taskRef:
+        kind: Task
+        name: mytask
       name: matrix-emitting-results
       taskRef:
         kind: Task
@@ -11316,10 +11320,6 @@ status:
     kind: TaskRun
     name: pr-matrix-emitting-results-2
     pipelineTaskName: matrix-emitting-results
-  - apiVersion: tekton.dev/v1
-    kind: TaskRun
-    name: pr-matrix-consuming-results
-    pipelineTaskName: matrix-consuming-results
 `),
 	}}
 	for _, tt := range tests {
@@ -11371,7 +11371,7 @@ spec:
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
 
-			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, ignoreProvenance, cmpopts.EquateEmpty()); d != "" {
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, cmpopts.SortSlices(lessChildReferences), cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
 		})

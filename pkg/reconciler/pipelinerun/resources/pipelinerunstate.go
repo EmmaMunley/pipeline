@@ -66,9 +66,9 @@ type PipelineRunFacts struct {
 	// needed, via the `Skip` method in pipelinerunresolution.go
 	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
 	// can be used to clean the cache and force re-computation when needed.
-	SkipCache map[string]TaskSkipStatus
-
-	ResultsCache map[string][]v1.TaskRunResult
+	SkipCache    map[string]TaskSkipStatus
+	ResultsCache map[string][]string
+	// ResultsCache map[string][]v1.TaskRunResult
 }
 
 // PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
@@ -182,7 +182,7 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1.TaskRunResult
 }
 
 func createResultsMappingFromMatrixedTaskRuns(taskRuns []*v1.TaskRun) map[string][]string {
-	resultsMap := make(map[string][]string)
+	resultsMap := map[string][]string{}
 	for _, taskRun := range taskRuns {
 		fmt.Println("taskRun", taskRun)
 		results := taskRun.Status.Results
@@ -190,6 +190,8 @@ func createResultsMappingFromMatrixedTaskRuns(taskRuns []*v1.TaskRun) map[string
 
 		for _, result := range results {
 			if _, ok := resultsMap[result.Name]; ok {
+				val := result.Value
+				fmt.Println("val", val)
 				resultsMap[result.Name] = append(resultsMap[result.Name], result.Value.StringVal)
 			} else {
 				resultsMap[result.Name] = []string{result.Value.StringVal}

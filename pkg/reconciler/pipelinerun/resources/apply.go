@@ -172,6 +172,7 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	stringReplacements := resolvedResultRefs.getStringReplacements()
 	arrayReplacements := resolvedResultRefs.getArrayReplacements()
 	objectReplacements := resolvedResultRefs.getObjectReplacements()
+	fmt.Println("arrayReplacements", arrayReplacements)
 	for _, resolvedPipelineRunTask := range targets {
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
