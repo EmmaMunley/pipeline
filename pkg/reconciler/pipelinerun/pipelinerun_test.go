@@ -1207,7 +1207,7 @@ status:
       EnableProvenanceInStatus: true
       ResultExtractionMethod: "termination-message"
       MaxResultSize: 4096
-      Coschedule: "workspaces" 
+      Coschedule: "workspaces"
 `)
 	d := test.Data{
 		PipelineRuns: prs,
@@ -8052,6 +8052,278 @@ spec:
 
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see propagated metadata by the precedence from PipelineTaskRunSpec in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+}
+
+func TestReconciler_TEST(t *testing.T) {
+	names.TestingSeed()
+
+	task := parse.MustParseV1Task(t, `
+metadata:
+  name: mytask
+  namespace: foo
+spec:
+  params:
+    - name: platform
+    - name: browser
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.platform) and $(params.browser)"
+`)
+
+	expectedTaskRuns := []*v1.TaskRun{
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-0", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: linux
+  - name: browser
+    value: chrome
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: mac
+  - name: browser
+    value: chrome
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-2", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: windows
+  - name: browser
+    value: chrome
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+    kind: Task
+`),
+	}
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+
+	tests := []struct {
+		name                string
+		memberOf            string
+		p                   *v1.Pipeline
+		tr                  *v1.TaskRun
+		expectedPipelineRun *v1.PipelineRun
+	}{{
+		name:     "p-dag",
+		memberOf: "tasks",
+		p: parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  tasks:
+    - name: platforms-and-browsers
+      taskRef:
+        name: mytask
+      matrix:
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+      params:
+        - name: browser
+          value: chrome
+    - name: matrix-with-task-retries
+      retries: 1
+      params:
+        - name: pipelineTask-retries
+          value: $(context.pipelineTask.retries)
+      matrix:
+        params:
+          - name: version
+            value:
+              - "1"
+              - "2"
+      taskSpec:
+        params:
+          - name: version
+        steps:
+          - image: alpine
+            script: |
+              #!/usr/bin/env sh
+              if [ "$(context.task.retry-count)" == "$(params.pipelineTask-retries)" ]; then
+                echo "This is the last retry."
+                exit 0;
+              fi
+              echo "The PipelineTask has retried $(context.task.retry-count) times."
+              exit 1
+`, "p-dag")),
+		expectedPipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: foo
+  annotations: {}
+  labels:
+    tekton.dev/pipeline: p-dag
+spec:
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  pipelineRef:
+    name: p-dag
+status:
+  pipelineSpec:
+    tasks:
+    - name: platforms-and-browsers
+      taskRef:
+        name: mytask
+        kind: Task
+      matrix:
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+      params:
+        - name: browser
+          value: chrome
+    - name: matrix-with-task-retries
+      retries: 1
+      params:
+        - name: pipelineTask-retries
+          value: $(context.pipelineTask.retries)
+      matrix:
+        params:
+          - name: version
+            value:
+              - "1"
+              - "2"
+      taskSpec:
+        params:
+          - name: version
+            type: string
+        steps:
+          - image: alpine
+            script: |
+              #!/usr/bin/env sh
+              if [ "$(context.task.retry-count)" == "$(params.pipelineTask-retries)" ]; then
+                echo "This is the last retry."
+                exit 0;
+              fi
+              echo "The PipelineTask has retried $(context.task.retry-count) times."
+              exit 1
+  conditions:
+  - type: Succeeded
+    status: "Unknown"
+    reason: "Running"
+    message: "Tasks Completed: 0 (Failed: 0, Cancelled 0), Incomplete: 2, Skipped: 0"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-0
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-1
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-2
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-matrix-with-task-retries-0
+    pipelineTaskName: matrix-with-task-retries
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: pr-matrix-with-task-retries-1
+    pipelineTaskName: matrix-with-task-retries
+  provenance:
+    featureFlags:
+      RunningInEnvWithInjectedSidecars: true
+      EnableTektonOCIBundles: true
+      EnableAPIFields: "alpha"
+      EnforceNonfalsifiability: "none"
+      AwaitSidecarReadiness: true
+      VerificationNoMatchPolicy: "ignore"
+      EnableProvenanceInStatus: true
+      ResultExtractionMethod: "termination-message"
+      MaxResultSize: 4096
+      Coschedule: "workspaces"
+`),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pr
+  namespace: foo
+spec:
+  taskRunTemplate:
+    serviceAccountName: test-sa
+  pipelineRef:
+    name: %s
+`, tt.name))
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+				Pipelines:    []*v1.Pipeline{tt.p},
+				Tasks:        []*v1.Task{task},
+				ConfigMaps:   cms,
+			}
+			if tt.tr != nil {
+				d.TaskRuns = []*v1.TaskRun{tt.tr}
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
+			taskRuns, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=pr,tekton.dev/pipeline=%s,tekton.dev/pipelineTask=platforms-and-browsers", tt.name),
+				Limit:         1,
+			})
+			if err != nil {
+				t.Fatalf("Failure to list TaskRun's %s", err)
+			}
+
+			if len(taskRuns.Items) != 3 {
+				t.Fatalf("Expected 3 TaskRuns got %d", len(taskRuns.Items))
+			}
+
+			for i := range taskRuns.Items {
+				expectedTaskRun := expectedTaskRuns[i]
+				expectedTaskRun.Labels["tekton.dev/pipeline"] = tt.name
+				expectedTaskRun.Labels["tekton.dev/memberOf"] = tt.memberOf
+				if d := cmp.Diff(expectedTaskRun, &taskRuns.Items[i], ignoreResourceVersion, ignoreTypeMeta); d != "" {
+					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
+				}
+			}
+
+			pipelineRun, err := clients.Pipeline.TektonV1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "pr", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
+			}
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
+				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
